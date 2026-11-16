@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 08.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 09.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
@@ -52,6 +52,7 @@ Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
 ```bash
 uv run ops-assist profile
+uv run ops-assist mcp-serve  # MCP over stdio
 uv run ops-assist tokens
 uv run ops-assist validate examples/reports/valid.json
 uv run ops-assist ask "What is latency?"
@@ -60,7 +61,7 @@ uv run ops-assist investigate "Why is payment slow?"
 
 The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md).
 
 ## Layout
 
@@ -87,3 +88,7 @@ Module 1 now includes workshops 04–07: five subsystems, architecture decisions
 ## Step 08 — tool calls and live sources
 
 [Workshop 08 — tool calls](ateliers/08-appel-d-outils/README.md) completes step 08. Workshops 01–08 are available. The default source remains replay; `OPS_ASSIST_SOURCE=live` composes Prometheus alerts and metrics, Loki logs, and changes from an explicitly configured file for `ops-assist investigate`. Set `OPS_ASSIST_PROMETHEUS_URL` and `OPS_ASSIST_LOKI_URL`; `OPS_ASSIST_HTTP_TIMEOUT` defaults to 5 seconds and `OPS_ASSIST_TOOL_TIMEOUT` to 10 seconds. `ops-assist triage` and `tokens` remain offline replay commands. Set `OPS_ASSIST_CHANGES_FILE` to a JSON file in the recorded `changes.json` format; without it, changes are unavailable. Loki requires an indexed `level` label for level filters. The hand-made HTTP fixtures use the API formats; they are not server captures and do not exercise the time window. Timed-out workers are abandoned and do not delay process exit; the worker pool is bounded. See the workshop for labels, time window, and an offline path.
+
+## Step 09 — MCP
+
+`ops-assist mcp-serve` exposes the four read-only observation tools over stdio. Set `OPS_ASSIST_TOOLS=mcp` to let ADK start and consume this server; the default `inprocess` keeps direct tools. The server uses the configured source and selected incident; memory recall stays local. Injected Python sources cannot cross the process boundary. The offline [workshop](ateliers/09-mcp/README.md) demonstrates discovery and calls without a model.

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,6 +11,7 @@ import litellm
 from google.adk.models.base_llm import BaseLlm
 from google.adk.runners import InMemoryRunner, Runner
 from google.adk.sessions.sqlite_session_service import SqliteSessionService
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.genai import types
 from litellm.rust_bridge.tokenizer import anthropic
 
@@ -52,6 +54,7 @@ def investigate(
 ) -> tuple[IncidentReport, InvestigationTrace]:
     """Run an investigation in a new or resumed session and validate its report."""
     settings = settings or load_settings()
+    explicit_source = source is not None
     source = source or source_from_env(settings.incident)
     try:
         triage = pretriage(source)
@@ -61,7 +64,12 @@ def investigate(
         logger.warning("Pre-triage unavailable: %s", exc)
         data = json.dumps({"status": "unavailable", "reason": str(exc)[:200]})
         services = []
-    agent = build_agent(settings, source)
+    if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
+        if explicit_source:
+            raise ValueError("MCP tools require an environment-configured source")
+        agent = build_agent(settings)
+    else:
+        agent = build_agent(settings, source)
     trace = InvestigationTrace()
 
     def measure(callback_context, llm_request):
@@ -128,4 +136,18 @@ def investigate(
             trace.warnings.append("Could not save investigation memory")
         return report, trace
 
-    return asyncio.run(run())
+    async def run_and_close():
+        try:
+            if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
+                try:
+                    toolset = next(tool for tool in agent.tools if isinstance(tool, McpToolset))
+                    await toolset.get_tools()
+                except Exception as exc:
+                    raise ValueError(
+                        "Could not start ops-assist MCP server; try OPS_ASSIST_TOOLS=inprocess"
+                    ) from exc
+            return await run()
+        finally:
+            await runner.close()
+
+    return asyncio.run(run_and_close())

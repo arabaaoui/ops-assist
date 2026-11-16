@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     """Parse and execute a command."""
     parser = argparse.ArgumentParser(prog="ops-assist")
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("mcp-serve", help="serve read-only observation tools over stdio")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -47,6 +48,11 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "mcp-serve":
+            from .mcp_server import serve
+
+            serve()
+            return 0
         if args.command == "validate":
             IncidentReport.model_validate_json(args.file.read_text(encoding="utf-8"))
             print("OK")

@@ -20,6 +20,19 @@ from .observability import MAX_LOG_LINES, ObservationError, ObservationSource
 
 logger = logging.getLogger(__name__)
 
+MCP_EXPOSED_TOOLS = ("get_alerts", "get_metric", "get_logs", "get_changes")
+
+
+def tool_timeout() -> float:
+    """Return the validated server-side tool timeout in seconds."""
+    try:
+        timeout = float(os.environ.get("OPS_ASSIST_TOOL_TIMEOUT", "10"))
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError
+    except ValueError as exc:
+        raise ValueError("OPS_ASSIST_TOOL_TIMEOUT must be a positive finite number") from exc
+    return timeout
+
 
 def _failure(tool: str, error: Exception) -> dict[str, Any]:
     if isinstance(error, ObservationError):
@@ -33,9 +46,7 @@ def _failure(tool: str, error: Exception) -> dict[str, Any]:
 
 async def _call(tool: str, func: Callable, *args: Any) -> Any:
     try:
-        timeout = float(os.environ.get("OPS_ASSIST_TOOL_TIMEOUT", "10"))
-        if not math.isfinite(timeout) or timeout <= 0:
-            raise ValueError("OPS_ASSIST_TOOL_TIMEOUT must be a positive finite number")
+        timeout = tool_timeout()
         return await asyncio.wait_for(asyncio.wrap_future(executor.submit(func, *args)), timeout)
     except TimeoutError as exc:
         raise ObservationError(f"{tool} timed out after {timeout:g} seconds") from exc
