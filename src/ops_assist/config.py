@@ -9,7 +9,8 @@ message that names the file, never silently repaired.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -28,6 +29,8 @@ class Settings:
     api_base: str | None = None
     incident: str = "payment-latency"
     session_db: str | None = None
+    requires_env: list[str] = field(default_factory=list)
+    models_overridden: bool = False
 
     def describe(self) -> str:
         """One line for the startup log: what will actually be called."""
@@ -51,6 +54,21 @@ def _load_profiles(path: Path) -> dict[str, dict]:
         models = p.get("models", [])
         if not isinstance(models, list) or not all(isinstance(m, str) and m for m in models):
             raise ValueError(f"{path}: profile {name!r}: 'models' must be a list of model ids")
+        required = p.get("requires_env")
+        if (
+            not isinstance(required, list)
+            or not all(
+                isinstance(key, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key)
+                for key in required
+            )
+            or len(set(required)) != len(required)
+        ):
+            raise ValueError(
+                f"{path}: profile {name!r}: requires_env must be a list of "
+                "unique environment variable names"
+            )
+        if not isinstance(p.get("description"), str) or not p["description"].strip():
+            raise ValueError(f"{path}: profile {name!r}: description must be a non-empty string")
     return profiles
 
 
@@ -86,4 +104,6 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         api_base=api_base,
         incident=env.get("OPS_ASSIST_INCIDENT", "").strip() or "payment-latency",
         session_db=env.get("OPS_ASSIST_SESSION_DB") or None,
+        requires_env=list(profile["requires_env"]),
+        models_overridden="OPS_ASSIST_MODELS" in env,
     )

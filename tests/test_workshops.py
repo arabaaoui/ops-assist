@@ -127,3 +127,55 @@ def test_profile_redacts_endpoint_credentials_and_query(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "https://localhost:1234/api" in out
     assert all(secret not in out for secret in ("password", "user", "secret", "token"))
+
+
+@pytest.mark.parametrize("command", ["ask", "investigate"])
+def test_missing_keys_fail_before_model_call(monkeypatch, capsys, command):
+    monkeypatch.setenv("OPS_ASSIST_PROFILE", "mixed")
+    monkeypatch.delenv("OPS_ASSIST_MODELS", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "present")
+    monkeypatch.setenv("OPENAI_API_KEY", " ")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(litellm, "completion", lambda **kwargs: pytest.fail("called model"))
+    monkeypatch.setattr(cli, "investigate", lambda *a, **kw: pytest.fail("called agent"))
+    assert cli.main([command, "question"]) == 1
+    err = capsys.readouterr().err
+    assert "OPENAI_API_KEY" in err and "ANTHROPIC_API_KEY" in err
+    assert "GEMINI_API_KEY" not in err and "present" not in err
+
+
+def test_profile_reports_key_status_without_value(monkeypatch, capsys):
+    monkeypatch.setenv("OPS_ASSIST_PROFILE", "mixed")
+    monkeypatch.delenv("OPS_ASSIST_MODELS", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-secret-value")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert cli.main(["profile"]) == 0
+    out = capsys.readouterr().out
+    assert "GEMINI_API_KEY: set" in out and "OPENAI_API_KEY: missing" in out
+    assert "fake-secret-value" not in out
+
+
+def test_list_profiles(monkeypatch, capsys):
+    monkeypatch.setenv("OPS_ASSIST_PROFILE", "unknown")
+    assert cli.main(["profile", "--list"]) == 0
+    out = capsys.readouterr().out
+    for name in ("local", "gemini", "api", "openai", "anthropic", "mistral", "openrouter", "mixed"):
+        assert f"{name}:" in out
+    assert "Alias of the gemini" in out and "OPENROUTER_API_KEY" in out
+
+
+def test_model_override_skips_profile_key_check(monkeypatch, capsys):
+    monkeypatch.setenv("OPS_ASSIST_PROFILE", "openai")
+    monkeypatch.setenv("OPS_ASSIST_MODELS", "test/model")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(
+        litellm,
+        "completion",
+        lambda **kw: SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
+        ),
+    )
+    assert cli.main(["profile"]) == 0
+    assert "not checked" in capsys.readouterr().out
+    assert cli.main(["ask", "question"]) == 0
+    assert capsys.readouterr().out.strip() == "ok"

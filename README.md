@@ -32,15 +32,21 @@ cp .env.example .env                   # then pick a profile
 uv run adk web apps                    # ADK developer UI on http://localhost:8000
 ```
 
-Two model profiles, in `src/ops_assist/data/profiles.yaml` (override the file with `OPS_ASSIST_PROFILES_FILE`):
+## Providers
 
-| Profile | Needs | Set |
-|---|---|---|
-| `local` (default) | [Ollama](https://ollama.com) and a model able to call tools | `OPS_ASSIST_PROFILE=local` |
-| `api` | an API key from a provider with a free tier | `OPS_ASSIST_PROFILE=api` and the provider's key |
+Choose a profile with `OPS_ASSIST_PROFILE`; inspect it with `ops-assist profile` or list all with `ops-assist profile --list`. The examples in `src/ops_assist/data/profiles.yaml` can be replaced using `OPS_ASSIST_PROFILES_FILE`.
 
-Model ids are examples: override them with `OPS_ASSIST_MODELS="provider/model,provider/fallback"`.
-Overridden models do not inherit the profile's endpoint; set `OPS_ASSIST_API_BASE` if they need one.
+| Profile | Provider | Models | Variable to set | Free tier | Key |
+|---|---|---|---|---|---|
+| `local` (default) | Ollama | `ollama_chat/qwen3:8b` | none | Local, no API charge | [Ollama](https://ollama.com/) |
+| `gemini` / `api` (alias) | Gemini | `gemini/gemini-2.5-flash`, `gemini/gemini-2.5-flash-lite` | `GEMINI_API_KEY` | Available subject to limits | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `openai` | OpenAI | `openai/gpt-4o-mini` | `OPENAI_API_KEY` | Paid API | [OpenAI](https://platform.openai.com/api-keys) |
+| `anthropic` | Anthropic | `anthropic/claude-haiku-4-5` | `ANTHROPIC_API_KEY` | Paid API | [Anthropic](https://console.anthropic.com/settings/keys) |
+| `mistral` | Mistral | `mistral/mistral-small-latest` | `MISTRAL_API_KEY` | Available subject to limits | [Mistral](https://console.mistral.ai/api-keys/) |
+| `openrouter` | OpenRouter | `openrouter/openai/gpt-4o-mini` | `OPENROUTER_API_KEY` | This model is paid | [OpenRouter](https://openrouter.ai/settings/keys) |
+| `mixed` | Gemini → OpenAI → Anthropic | `gemini/gemini-2.5-flash-lite`, `openai/gpt-4o-mini`, `anthropic/claude-haiku-4-5` | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Depends on provider; fallbacks may be paid | See links above |
+
+Availability and free-tier limits can change; check the provider before use. Any LiteLLM provider can be selected with `OPS_ASSIST_MODELS="provider/model,provider/fallback"`. This override disables the profile's required-variable checks: configure the chosen provider's credentials yourself. Overridden models do not inherit the profile endpoint; use `OPS_ASSIST_API_BASE` for self-hosted OpenAI-compatible endpoints such as vLLM or LM Studio.
 Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
 ## CLI and workshops

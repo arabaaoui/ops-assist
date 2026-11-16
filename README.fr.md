@@ -34,16 +34,22 @@ cp .env.example .env                   # puis choisir un profil
 uv run adk web apps                    # interface de développement ADK sur http://localhost:8000
 ```
 
-Deux profils de modèle, dans `src/ops_assist/data/profiles.yaml` (autre fichier : `OPS_ASSIST_PROFILES_FILE`) :
+## Fournisseurs
 
-| Profil | Prérequis | Réglage |
-|---|---|---|
-| `local` (par défaut) | [Ollama](https://ollama.com) et un modèle qui sait appeler des outils | `OPS_ASSIST_PROFILE=local` |
-| `api` | une clé d'API d'un fournisseur avec offre gratuite | `OPS_ASSIST_PROFILE=api` et la clé du fournisseur |
+Choisissez un profil avec `OPS_ASSIST_PROFILE` ; `ops-assist profile` montre sa configuration et `ops-assist profile --list` les liste tous. Les exemples de `src/ops_assist/data/profiles.yaml` peuvent être remplacés via `OPS_ASSIST_PROFILES_FILE`.
 
-Les identifiants de modèle sont des exemples : remplacez-les par `OPS_ASSIST_MODELS="fournisseur/modele,fournisseur/secours"`.
-Les modèles surchargés n'héritent pas de l'adresse du profil ; posez `OPS_ASSIST_API_BASE` s'il leur
-en faut une. Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDENTS_DIR`.
+| Profil | Fournisseur | Modèles | Variable à définir | Offre gratuite | Clé |
+|---|---|---|---|---|---|
+| `local` (défaut) | Ollama | `ollama_chat/qwen3:8b` | aucune | Local, sans frais d'API | [Ollama](https://ollama.com/) |
+| `gemini` / `api` (alias) | Gemini | `gemini/gemini-2.5-flash`, `gemini/gemini-2.5-flash-lite` | `GEMINI_API_KEY` | Oui, sous limites | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `openai` | OpenAI | `openai/gpt-4o-mini` | `OPENAI_API_KEY` | API payante | [OpenAI](https://platform.openai.com/api-keys) |
+| `anthropic` | Anthropic | `anthropic/claude-haiku-4-5` | `ANTHROPIC_API_KEY` | API payante | [Anthropic](https://console.anthropic.com/settings/keys) |
+| `mistral` | Mistral | `mistral/mistral-small-latest` | `MISTRAL_API_KEY` | Oui, sous limites | [Mistral](https://console.mistral.ai/api-keys/) |
+| `openrouter` | OpenRouter | `openrouter/openai/gpt-4o-mini` | `OPENROUTER_API_KEY` | Ce modèle est payant | [OpenRouter](https://openrouter.ai/settings/keys) |
+| `mixed` | Gemini → OpenAI → Anthropic | `gemini/gemini-2.5-flash-lite`, `openai/gpt-4o-mini`, `anthropic/claude-haiku-4-5` | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Selon le fournisseur ; replis potentiellement payants | Voir les liens ci-dessus |
+
+Les disponibilités et limites évoluent : vérifiez-les auprès du fournisseur. Tout fournisseur LiteLLM peut être choisi avec `OPS_ASSIST_MODELS="fournisseur/modele,fournisseur/secours"`. Cette surcharge désactive le contrôle des variables requises par le profil : configurez vous-même les identifiants du fournisseur choisi. Les modèles surchargés n'héritent pas de l'adresse du profil ; définissez `OPS_ASSIST_API_BASE` pour les serveurs compatibles OpenAI auto-hébergés comme vLLM ou LM Studio.
+Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDENTS_DIR`.
 
 ## Commandes et ateliers
 

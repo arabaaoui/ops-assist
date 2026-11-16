@@ -17,9 +17,15 @@ Le tableau compte les caractères et les tokens de chaque fichier enregistré, s
 `ask` envoie une question simple au premier modèle du profil, sans outil ni agent et sans repli automatique. Choisissez une option :
 
 - **Local** : installez et démarrez Ollama, puis téléchargez le modèle une fois avec `ollama pull qwen3:8b`. La commande `uv run ops-assist ask "Expliquez la latence en une phrase"` utilise le profil local par défaut.
-- **API** : configurez `OPS_ASSIST_PROFILE=api` et `GEMINI_API_KEY` dans votre environnement, puis lancez la même commande. Cette option utilise le réseau et peut dépendre de la disponibilité et des limites de l'offre gratuite Gemini.
+- **Gemini** : définissez `OPS_ASSIST_PROFILE=gemini` et `GEMINI_API_KEY` (`api` reste un alias).
+- **OpenAI** : définissez `OPS_ASSIST_PROFILE=openai` et `OPENAI_API_KEY`.
+- **Anthropic** : définissez `OPS_ASSIST_PROFILE=anthropic` et `ANTHROPIC_API_KEY`.
+- **Mistral** : définissez `OPS_ASSIST_PROFILE=mistral` et `MISTRAL_API_KEY`.
+- **OpenRouter** : définissez `OPS_ASSIST_PROFILE=openrouter` et `OPENROUTER_API_KEY`.
 
-Ne mettez jamais votre clé dans un fichier partagé. Les identifiants des modèles peuvent être adaptés avec `OPS_ASSIST_MODELS` ; `profile` montre le choix résolu sans afficher la clé.
+Puis lancez la même commande. Les options hébergées utilisent le réseau ; leurs tarifs et limites dépendent du fournisseur. Consultez le tableau des [fournisseurs](../../README.fr.md#fournisseurs).
+
+Ne mettez jamais votre clé dans un fichier partagé. Les identifiants des modèles peuvent être adaptés avec `OPS_ASSIST_MODELS` ; `profile` montre le choix résolu sans afficher la clé. Avec `OPS_ASSIST_MODELS`, les variables requises par le profil ne sont pas contrôlées : configurez celles du fournisseur choisi.
 
 ## Exercices
 

@@ -47,7 +47,9 @@ def test_the_profiles_ship_inside_the_package():
 
 def test_a_profile_without_models_is_refused(tmp_path):
     f = tmp_path / "p.yaml"
-    f.write_text("profiles:\n  empty:\n    models: []\n")
+    f.write_text(
+        "profiles:\n  empty:\n    models: []\n    description: Empty\n    requires_env: []\n"
+    )
     with pytest.raises(ValueError, match="defines no model"):
         load_settings(env={"OPS_ASSIST_PROFILES_FILE": str(f), "OPS_ASSIST_PROFILE": "empty"})
 
@@ -127,3 +129,65 @@ def test_a_malformed_request_does_not_fall_back():
 def test_empty_variables_fall_back_to_the_defaults():
     s = load_settings(env={"OPS_ASSIST_PROFILE": " ", "OPS_ASSIST_INCIDENT": ""})
     assert s.profile == "local" and s.incident == "payment-latency"
+
+
+@pytest.mark.parametrize(
+    ("profile", "providers"),
+    [
+        ("local", ["ollama_chat"]),
+        ("gemini", ["gemini", "gemini"]),
+        ("api", ["gemini", "gemini"]),
+        ("openai", ["openai"]),
+        ("anthropic", ["anthropic"]),
+        ("mistral", ["mistral"]),
+        ("openrouter", ["openrouter"]),
+        ("mixed", ["gemini", "openai", "anthropic"]),
+    ],
+)
+def test_bundled_profiles_resolve_offline(profile, providers):
+    settings = load_settings(env={"OPS_ASSIST_PROFILE": profile})
+    assert [litellm.get_llm_provider(model)[1] for model in settings.models] == providers
+
+
+def test_mixed_builds_cross_provider_fallback():
+    model = build_model(load_settings(env={"OPS_ASSIST_PROFILE": "mixed"}))
+    assert isinstance(model, FallbackModel)
+    assert len({litellm.get_llm_provider(m.model)[1] for m in model.models}) >= 2
+
+
+def test_api_is_gemini_alias():
+    api = load_settings(env={"OPS_ASSIST_PROFILE": "api"})
+    gemini = load_settings(env={"OPS_ASSIST_PROFILE": "gemini"})
+    assert (api.models, api.requires_env) == (gemini.models, gemini.requires_env)
+
+
+@pytest.mark.parametrize("value", [None, "KEY", [""], ["BAD-NAME"], [1], ["KEY", "KEY"]])
+def test_invalid_required_variables_are_refused(tmp_path, value):
+    import yaml
+
+    path = tmp_path / "profiles.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "profiles": {
+                    "bad": {"description": "Bad", "models": ["test/model"], "requires_env": value}
+                }
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="requires_env"):
+        load_settings(env={"OPS_ASSIST_PROFILES_FILE": str(path)})
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "gemini/gemini-2.5-flash",
+        "gemini/gemini-2.5-flash-lite",
+        "gpt-4o-mini",
+        "claude-haiku-4-5",
+        "mistral/mistral-small-latest",
+    ],
+)
+def test_bundled_hosted_models_support_tools_in_local_cost_map(model):
+    assert litellm.model_cost[model]["supports_function_calling"] is True

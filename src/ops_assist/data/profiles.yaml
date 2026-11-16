@@ -1,13 +1,34 @@
-# Model profiles. Pick one with OPS_ASSIST_PROFILE (default: local).
-# Model ids are LiteLLM ids ("provider/model"). They are examples: providers rename
-# models often, so override them with OPS_ASSIST_MODELS="id1,id2" rather than editing code.
-# The first model is the primary; the next ones are tried in order when a call fails
-# with a retriable status (rate limit, server error), never on a malformed request.
+# Model ids are examples; OPS_ASSIST_MODELS overrides the ordered chain.
 profiles:
   local:
-    description: Runs on your machine through Ollama. No account, no cost; needs a model that can call tools.
+    description: Ollama running locally with a tool-capable model.
     models: ["ollama_chat/qwen3:8b"]
     api_base: http://localhost:11434
-  api:
-    description: A hosted provider with a free tier. Needs an API key in the provider's usual variable (e.g. GEMINI_API_KEY).
+    requires_env: []
+  gemini: &gemini
+    description: Gemini hosted models with a fallback.
     models: ["gemini/gemini-2.5-flash", "gemini/gemini-2.5-flash-lite"]
+    requires_env: [GEMINI_API_KEY]
+  api:
+    <<: *gemini
+    description: Alias of the gemini profile, retained for existing workshops.
+  openai:
+    description: OpenAI hosted model.
+    models: ["openai/gpt-4o-mini"]
+    requires_env: [OPENAI_API_KEY]
+  anthropic:
+    description: Anthropic hosted model.
+    models: ["anthropic/claude-haiku-4-5"]
+    requires_env: [ANTHROPIC_API_KEY]
+  mistral:
+    description: Mistral hosted model.
+    models: ["mistral/mistral-small-latest"]
+    requires_env: [MISTRAL_API_KEY]
+  openrouter:
+    description: OpenRouter hosted model.
+    models: ["openrouter/openai/gpt-4o-mini"]
+    requires_env: [OPENROUTER_API_KEY]
+  mixed:
+    description: Gemini, OpenAI and Anthropic fallback chain.
+    models: ["gemini/gemini-2.5-flash-lite", "openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"]
+    requires_env: [GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY]

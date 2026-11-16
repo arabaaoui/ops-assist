@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -10,7 +11,7 @@ import litellm
 from litellm.rust_bridge.tokenizer import anthropic
 from pydantic import ValidationError
 
-from .config import load_settings
+from .config import PROFILES_FILE, _load_profiles, load_settings
 from .memory import forget, list_memories
 from .observability import ObservationError, ReplaySource
 from .report import IncidentReport
@@ -22,7 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     """Parse and execute a command."""
     parser = argparse.ArgumentParser(prog="ops-assist")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("profile")
+    profile = commands.add_parser("profile")
+    profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
     tokens.add_argument("--incident")
     tokens.add_argument("--model")
@@ -49,9 +51,26 @@ def main(argv: list[str] | None = None) -> int:
             IncidentReport.model_validate_json(args.file.read_text(encoding="utf-8"))
             print("OK")
             return 0
+        if args.command == "profile" and args.list:
+            path = Path(os.environ.get("OPS_ASSIST_PROFILES_FILE") or PROFILES_FILE)
+            for name, profile in _load_profiles(path).items():
+                required = ", ".join(profile["requires_env"]) or "none"
+                print(f"{name}: {profile['description']} (requires: {required})")
+            return 0
         settings = load_settings()
+        if args.command in ("ask", "investigate") and not settings.models_overridden:
+            missing = [key for key in settings.requires_env if not os.environ.get(key, "").strip()]
+            if missing:
+                raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
         if args.command == "profile":
             print(settings.describe())
+            for key in settings.requires_env:
+                status = "set" if os.environ.get(key, "").strip() else "missing"
+                print(f"{key}: {status}")
+            if settings.models_overridden:
+                print(
+                    "OPS_ASSIST_MODELS override: required variables are not checked before calls."
+                )
         elif args.command == "tokens":
             source = ReplaySource(args.incident or settings.incident)
             model = args.model or settings.models[0]
