@@ -1,0 +1,6 @@
+[
+  {"id": "ALR-1042", "name": "HighLatencyP95", "service": "payment-api", "severity": "warning",
+   "since": "2026-03-12T09:02:00Z", "summary": "p95 latency above 750 ms for 5 minutes"},
+  {"id": "ALR-1043", "name": "ErrorRateElevated", "service": "payment-api", "severity": "info",
+   "since": "2026-03-12T09:10:00Z", "summary": "5xx rate above 1 % for 5 minutes"}
+]

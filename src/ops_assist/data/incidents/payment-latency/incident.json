@@ -1,0 +1,7 @@
+{
+  "id": "payment-latency",
+  "title": "The payment API has been slow since this morning",
+  "question": "Why has payment-api been slow since 09:00?",
+  "environment": "demo",
+  "fictional": true
+}

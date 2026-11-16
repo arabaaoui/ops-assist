@@ -1,0 +1,4 @@
+{
+  "root_cause": "Deployment v2.14 of payment-api (08:55) exhausts the orders-db connection pool: database timeouts drive p95 latency up threefold.",
+  "note": "Answer key for evaluations. Never read by the agent's tools."
+}

@@ -1,0 +1,30 @@
+[
+ {
+  "id": "CHG-311",
+  "ts": "2026-03-11T16:20:00Z",
+  "service": "payment-api",
+  "kind": "config",
+  "author": "alice",
+  "summary": "raise HTTP client timeout to 10 s"
+ },
+ {
+  "id": "DEP-2140",
+  "ts": "2026-03-12T08:55:00Z",
+  "service": "payment-api",
+  "kind": "deployment",
+  "author": "ci-bot",
+  "version": "v2.14",
+  "previous_version": "v2.13",
+  "summary": "new fraud check performs one extra query per payment"
+ },
+ {
+  "id": "DEP-0870",
+  "ts": "2026-03-10T10:00:00Z",
+  "service": "orders-db",
+  "kind": "deployment",
+  "author": "ci-bot",
+  "version": "15.6",
+  "previous_version": "15.5",
+  "summary": "minor database engine upgrade"
+ }
+]

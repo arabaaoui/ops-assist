@@ -1,0 +1,39 @@
+[project]
+name = "ops-assist"
+version = "0.1.0"
+description = "An open-source incident investigation agent built with Google ADK, provider-agnostic, read-only by default."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+# Versions pinned to what the course was written against; bump deliberately.
+dependencies = [
+    "google-adk==2.14.1",
+    "litellm==1.109.1",
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "ruff==0.17.5",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "D"]
+ignore = ["D203", "D213", "D100", "D104"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
