@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12"
 # Versions pinned to what the course was written against; bump deliberately.
 dependencies = [
-    "google-adk==2.14.1",
+    "google-adk[mcp,a2a]==2.14.1",
     "litellm==1.109.1",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
