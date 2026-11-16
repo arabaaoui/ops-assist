@@ -1,0 +1,9 @@
+{
+  "summary": "Not enough evidence.",
+  "status": "insufficient_data",
+  "proposed_action": {
+    "kind": "rollback_deployment",
+    "target": "payment-api",
+    "reason": "Possible regression"
+  }
+}

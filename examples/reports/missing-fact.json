@@ -1,0 +1,22 @@
+{
+  "summary": "The payment API is slow; alerts alone do not establish the cause.",
+  "status": "hypotheses_only",
+  "facts": [
+    {
+      "statement": "Payment latency is high.",
+      "source": "replay:payment-latency/alerts"
+    }
+  ],
+  "hypotheses": [
+    {
+      "statement": "Possible overload",
+      "confidence": 0.3,
+      "supporting_facts": [
+        9
+      ]
+    }
+  ],
+  "unknowns": [
+    "Metrics and logs have not been inspected."
+  ]
+}

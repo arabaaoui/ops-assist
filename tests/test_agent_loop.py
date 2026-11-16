@@ -85,7 +85,7 @@ def test_an_unexpected_source_failure_comes_back_as_data():
         def alerts(self):
             raise TimeoutError("backend did not answer within 5 s")
 
-    (get_alerts,) = make_tools(Broken())
+    get_alerts, *_ = make_tools(Broken())
     assert get_alerts() == {"status": "error", "error": "get_alerts failed: TimeoutError"}
 
 
@@ -96,7 +96,7 @@ def test_an_observation_error_keeps_its_message():
         def alerts(self):
             raise ObservationError("backend unreachable")
 
-    (get_alerts,) = make_tools(Explains())
+    get_alerts, *_ = make_tools(Explains())
     assert get_alerts() == {"status": "error", "error": "backend unreachable"}
 
 
@@ -108,5 +108,11 @@ def test_the_instruction_treats_tool_results_as_data():
 
 def test_the_agent_starts_read_only_with_a_report_schema():
     agent = build_agent(load_settings(env={}))
-    assert [t.__name__ for t in agent.tools] == ["get_alerts"]
+    assert [t.__name__ for t in agent.tools] == [
+        "get_alerts",
+        "get_metric",
+        "get_logs",
+        "get_changes",
+        "recall_past_incidents",
+    ]
     assert agent.output_schema is IncidentReport

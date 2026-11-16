@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 0.** The agent reads the alerts and must answer with a valid `IncidentReport`;
+**Status: steps 01–03.** The agent reads the alerts and must answer with a valid `IncidentReport`;
 metrics, logs and changes are already in the observation layer and become tools in later steps.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
@@ -43,6 +43,20 @@ Model ids are examples: override them with `OPS_ASSIST_MODELS="provider/model,pr
 Overridden models do not inherit the profile's endpoint; set `OPS_ASSIST_API_BASE` if they need one.
 Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
+## CLI and workshops
+
+```bash
+uv run ops-assist profile
+uv run ops-assist tokens
+uv run ops-assist validate examples/reports/valid.json
+uv run ops-assist ask "What is latency?"
+uv run ops-assist investigate "Why is payment slow?"
+```
+
+The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
+
+French workshops (under one hour each): [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md).
+
 ## Layout
 
 ```
@@ -62,3 +76,5 @@ tests/                contract suite for any source, report rules, fallback chai
 ## License
 
 [Apache 2.0](LICENSE).
+
+Module 1 now includes workshops 04–07: five subsystems, architecture decisions, memory, and context budget (`ateliers/04-sous-systemes/` through `ateliers/07-budget-contexte/`). The deterministic `uv run ops-assist triage` works offline. `uv run ops-assist investigate "Why?" --show-context` estimates prompt tokens per model turn and requires a configured model. Reports save redacted summaries per affected service; `ops-assist memory list [--service S]` and `ops-assist memory forget --service S` inspect and delete them. Set `OPS_ASSIST_MEMORY_DIR` to change the default `~/.local/state/ops-assist`. ADK sessions are in memory by default. Set `OPS_ASSIST_SESSION_DB` to a SQLite file path to persist session events and state offline, and pass `--session ID` to resume or create a named session. The CLI prints the session ID; reuse it with the same database. The SQLite session is separate from the JSON summary store and can contain unredacted messages and tool results; use fictional data and protect the file. Without SQLite, session IDs cannot be resumed across CLI processes. Redaction is heuristic, not a guarantee; use fictional data in workshops.

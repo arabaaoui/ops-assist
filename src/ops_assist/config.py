@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
@@ -26,10 +27,16 @@ class Settings:
     models: list[str]
     api_base: str | None = None
     incident: str = "payment-latency"
+    session_db: str | None = None
 
     def describe(self) -> str:
         """One line for the startup log: what will actually be called."""
-        where = f" via {self.api_base}" if self.api_base else ""
+        where = ""
+        if self.api_base:
+            url = urlsplit(self.api_base)
+            host = url.netloc.rsplit("@", 1)[-1]
+            safe_base = urlunsplit((url.scheme, host, url.path, "", ""))
+            where = f" via {safe_base}"
         return f"profile={self.profile} models={self.models}{where} incident={self.incident}"
 
 
@@ -78,4 +85,5 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         models=models,
         api_base=api_base,
         incident=env.get("OPS_ASSIST_INCIDENT", "").strip() or "payment-latency",
+        session_db=env.get("OPS_ASSIST_SESSION_DB") or None,
     )
