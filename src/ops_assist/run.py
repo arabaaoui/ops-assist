@@ -16,7 +16,7 @@ from litellm.rust_bridge.tokenizer import anthropic
 from .agent import build_agent
 from .config import Settings, load_settings
 from .memory import remember
-from .observability import ObservationSource, ReplaySource
+from .observability import ObservationSource, source_from_env
 from .report import IncidentReport
 from .triage import pretriage
 
@@ -52,7 +52,7 @@ def investigate(
 ) -> tuple[IncidentReport, InvestigationTrace]:
     """Run an investigation in a new or resumed session and validate its report."""
     settings = settings or load_settings()
-    source = source or ReplaySource(settings.incident)
+    source = source or source_from_env(settings.incident)
     try:
         triage = pretriage(source)
         data = triage.model_dump_json()

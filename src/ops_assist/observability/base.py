@@ -1,8 +1,8 @@
 """The single observation interface every data source implements.
 
 The agent's tools only ever talk to an ``ObservationSource``. The replay source
-reads recorded incidents from disk; real connectors (Prometheus, Loki) come later
-and must pass the same contract tests. Results are plain dicts so they can be
+reads recorded incidents from disk; Prometheus and Loki implement declared subsets
+of the same contract, and a composite combines those subsets. Results are plain dicts so they can be
 returned to the model as-is, and every one carries the ``source`` it came from so
 the report can cite it.
 """
@@ -25,6 +25,7 @@ class ObservationSource(Protocol):
     """Read-only access to alerts, metrics, logs and changes for one environment."""
 
     name: str
+    capabilities: frozenset[str]
 
     def alerts(self) -> list[dict[str, Any]]:
         """Return the alerts currently firing: ``id, name, service, severity, since, source``."""

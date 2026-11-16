@@ -1,0 +1,1 @@
+{"status":"success","data":{"alerts":[{"state":"firing","labels":{"alertname":"Latency","service":"payment-api","severity":"critical"},"activeAt":"2026-01-01T00:00:00Z"}]}}

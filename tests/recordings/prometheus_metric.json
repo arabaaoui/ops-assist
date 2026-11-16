@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"__name__":"latency","service":"payment-api"},"values":[[1767225600,"0.5"],[1767225660,"1.5"]]}]}}

@@ -20,6 +20,7 @@ class TestReplayHonoursTheContract(ObservationContract):
     def sample(self):
         return {
             "service": "payment-api",
+            "silent_service": "orders-db",
             "metric": "http_request_duration_p95_seconds",
             "foreign_metric": "db_pool_connections_in_use",
             "unknown_metric": "nope",

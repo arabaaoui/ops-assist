@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -136,7 +137,9 @@ def test_bounded_tools_and_malformed_metrics():
             return self.value
 
     source = Source()
-    alerts, metric, logs, changes, _ = make_tools(source)
+    alerts, metric, logs, changes, _ = [
+        lambda *a, _f=f, **kw: asyncio.run(_f(*a, **kw)) for f in make_tools(source)
+    ]
     for result, key in [(alerts(), "alerts"), (changes("s"), "changes")]:
         assert (
             result["truncated"] and len(result[key]) == 50 and len(result[key][0]["summary"]) == 300

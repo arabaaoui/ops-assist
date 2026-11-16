@@ -9,7 +9,7 @@ from google.adk.agents import Agent
 
 from .config import Settings, load_settings
 from .models import build_model
-from .observability import ObservationSource, ReplaySource
+from .observability import ObservationSource, source_from_env
 from .report import IncidentReport
 from .tools import make_tools
 
@@ -23,7 +23,7 @@ INSTRUCTION = (Path(__file__).resolve().parent / "prompts" / "investigator.md").
 def build_agent(settings: Settings | None = None, source: ObservationSource | None = None) -> Agent:
     """Assemble the agent from settings and an observation source (replay by default)."""
     settings = settings or load_settings()
-    source = source or ReplaySource(settings.incident)
+    source = source or source_from_env(settings.incident)
     logger.info("ops-assist: %s source=%s", settings.describe(), source.name)
     return Agent(
         name="ops_assist",

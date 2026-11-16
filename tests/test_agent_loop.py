@@ -83,10 +83,12 @@ def test_an_unexpected_source_failure_comes_back_as_data():
         name = "broken"
 
         def alerts(self):
-            raise TimeoutError("backend did not answer within 5 s")
+            raise RuntimeError("private backend error")
 
-    get_alerts, *_ = make_tools(Broken())
-    assert get_alerts() == {"status": "error", "error": "get_alerts failed: TimeoutError"}
+    get_alerts, *_ = [
+        lambda *a, _f=f, **kw: asyncio.run(_f(*a, **kw)) for f in make_tools(Broken())
+    ]
+    assert get_alerts() == {"status": "error", "error": "get_alerts failed: RuntimeError"}
 
 
 def test_an_observation_error_keeps_its_message():
@@ -96,7 +98,9 @@ def test_an_observation_error_keeps_its_message():
         def alerts(self):
             raise ObservationError("backend unreachable")
 
-    get_alerts, *_ = make_tools(Explains())
+    get_alerts, *_ = [
+        lambda *a, _f=f, **kw: asyncio.run(_f(*a, **kw)) for f in make_tools(Explains())
+    ]
     assert get_alerts() == {"status": "error", "error": "backend unreachable"}
 
 

@@ -15,6 +15,23 @@ class ObservationContract:
     def test_it_has_a_name(self, source):
         assert isinstance(source.name, str) and source.name
 
+    @pytest.fixture(autouse=True)
+    def require_capability(self, request, source):
+        name = request.node.name
+        capability = (
+            "alerts"
+            if "alerts" in name
+            else "metric"
+            if "metric" in name
+            else "logs"
+            if any(x in name for x in ("logs", "limited", "level"))
+            else "changes"
+            if "changes" in name
+            else None
+        )
+        if capability and capability not in source.capabilities:
+            pytest.skip(f"source declares {capability} unsupported")
+
     def test_alerts_carry_service_severity_and_source(self, source):
         for a in source.alerts():
             assert {"id", "name", "service", "severity", "since", "source"} <= a.keys()
@@ -42,17 +59,24 @@ class ObservationContract:
         assert [x["ts"] for x in newest] == [x["ts"] for x in everything[:3]]
         assert [x["ts"] for x in everything] == sorted((x["ts"] for x in everything), reverse=True)
 
+    def test_logs_for_a_known_silent_service_are_empty(self, source, sample):
+        assert source.logs(sample["silent_service"]) == []
+
     def test_a_level_filter_keeps_only_that_level(self, source, sample):
         for level in {x["level"] for x in source.logs(sample["service"], limit=MAX_LOG_LINES)}:
             assert all(x["level"] == level for x in source.logs(sample["service"], level=level))
 
     def test_bad_arguments_are_refused_not_answered_empty(self, source, sample):
-        for call in (
-            lambda: source.logs("no-such-service"),
-            lambda: source.changes("no-such-service"),
-            lambda: source.logs(sample["service"], level="LOUD"),
-            lambda: source.logs(sample["service"], limit=0),
-        ):
+        calls = []
+        if "logs" in source.capabilities:
+            calls += [
+                lambda: source.logs("no-such-service"),
+                lambda: source.logs(sample["service"], level="LOUD"),
+                lambda: source.logs(sample["service"], limit=0),
+            ]
+        if "changes" in source.capabilities:
+            calls.append(lambda: source.changes("no-such-service"))
+        for call in calls:
             with pytest.raises(ObservationError):
                 call()
 

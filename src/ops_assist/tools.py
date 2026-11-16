@@ -7,11 +7,14 @@ logged with its traceback so a human can see it too.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
+import os
 from collections.abc import Callable
 from typing import Any
 
+from .executor import executor
 from .memory import MAX_RECALL, list_memories
 from .observability import MAX_LOG_LINES, ObservationError, ObservationSource
 
@@ -26,6 +29,16 @@ def _failure(tool: str, error: Exception) -> dict[str, Any]:
     # logs, give the model only the kind of failure, not internals.
     logger.exception("%s failed unexpectedly", tool)
     return {"status": "error", "error": f"{tool} failed: {type(error).__name__}"}
+
+
+async def _call(tool: str, func: Callable, *args: Any) -> Any:
+    try:
+        timeout = float(os.environ.get("OPS_ASSIST_TOOL_TIMEOUT", "10"))
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("OPS_ASSIST_TOOL_TIMEOUT must be a positive finite number")
+        return await asyncio.wait_for(asyncio.wrap_future(executor.submit(func, *args)), timeout)
+    except TimeoutError as exc:
+        raise ObservationError(f"{tool} timed out after {timeout:g} seconds") from exc
 
 
 def _bounded(value: Any) -> tuple[Any, bool]:
@@ -47,24 +60,24 @@ def _records(records: list, cap: int) -> tuple[list, bool]:
     return items, cut or len(records) > cap
 
 
-def make_tools(source: ObservationSource) -> list[Callable[..., dict[str, Any]]]:
+def make_tools(source: ObservationSource) -> list[Callable[..., Any]]:
     """Bind the read-only tools to one observation source."""
 
-    def get_alerts() -> dict[str, Any]:
+    async def get_alerts() -> dict[str, Any]:
         """List the alerts currently firing, with their service, severity and start time.
 
         Start every investigation here: the alerts tell which service to look at.
         """
         try:
-            alerts, truncated = _records(source.alerts(), 50)
+            alerts, truncated = _records(await _call("get_alerts", source.alerts), 50)
             return {"status": "ok", "alerts": alerts, "truncated": truncated}
         except Exception as e:  # noqa: BLE001 - a tool must never break the agent loop
             return _failure("get_alerts", e)
 
-    def get_metric(name: str, service: str) -> dict[str, Any]:
+    async def get_metric(name: str, service: str) -> dict[str, Any]:
         """Read a metric series for a service, summarising long series."""
         try:
-            metric = dict(source.metric(name, service))
+            metric = dict(await _call("get_metric", source.metric, name, service))
             raw = metric.get("points", [])
             if not isinstance(raw, list):
                 raw = []
@@ -99,31 +112,34 @@ def make_tools(source: ObservationSource) -> list[Callable[..., dict[str, Any]]]
         except Exception as e:  # noqa: BLE001
             return _failure("get_metric", e)
 
-    def get_logs(service: str, level: str | None = None, limit: int = 50) -> dict[str, Any]:
+    async def get_logs(service: str, level: str | None = None, limit: int = 50) -> dict[str, Any]:
         """Read recent bounded log lines for a service."""
         try:
             if limit < 1:
                 raise ObservationError("limit must be at least 1")
             cap = min(limit, MAX_LOG_LINES)
-            lines = source.logs(service, level, cap)
+            lines = await _call("get_logs", source.logs, service, level, cap)
             normalised = [{**line, "message": str(line.get("message") or "")} for line in lines]
             bounded, truncated = _records(normalised, cap)
             return {"status": "ok", "logs": bounded, "truncated": truncated}
         except Exception as e:  # noqa: BLE001
             return _failure("get_logs", e)
 
-    def get_changes(service: str) -> dict[str, Any]:
+    async def get_changes(service: str) -> dict[str, Any]:
         """Read changes for a service."""
         try:
-            changes, truncated = _records(source.changes(service), 50)
+            changes, truncated = _records(await _call("get_changes", source.changes, service), 50)
             return {"status": "ok", "changes": changes, "truncated": truncated}
         except Exception as e:  # noqa: BLE001
             return _failure("get_changes", e)
 
-    def recall_past_incidents(service: str) -> dict[str, Any]:
+    async def recall_past_incidents(service: str) -> dict[str, Any]:
         """Read the most recent saved summaries for a service."""
         try:
-            incidents, truncated = _records(list_memories(service)[-MAX_RECALL:], MAX_RECALL)
+            incidents, truncated = _records(
+                (await _call("recall_past_incidents", list_memories, service))[-MAX_RECALL:],
+                MAX_RECALL,
+            )
             return {"status": "ok", "incidents": incidents, "truncated": truncated}
         except Exception as e:  # noqa: BLE001
             return _failure("recall_past_incidents", e)

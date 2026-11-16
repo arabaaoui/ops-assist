@@ -34,6 +34,8 @@ def list_incidents(root: Path | None = None) -> list[str]:
 class ReplaySource:
     """An ``ObservationSource`` backed by one recorded incident."""
 
+    capabilities = frozenset({"alerts", "metric", "logs", "changes"})
+
     def __init__(self, incident: str, root: Path | None = None) -> None:
         """Load the incident folder ``root/incident``; fail loudly if it is missing."""
         root = root or incidents_dir()

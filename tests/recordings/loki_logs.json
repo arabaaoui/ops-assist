@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"streams","result":[{"stream":{"service":"payment-api","level":"error"},"values":[["1767225720000000000","failed"],["1767225600000000000","older"]]},{"stream":{"service":"payment-api","level":"info"},"values":[["1767225660000000000","started"]]}]}}

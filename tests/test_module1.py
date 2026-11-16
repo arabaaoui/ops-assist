@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -59,7 +60,9 @@ def test_tools_cap_and_handle_failures(monkeypatch, tmp_path):
         def changes(self, service):
             raise RuntimeError("private")
 
-    _, metric, logs, changes, recall = make_tools(Source())
+    _, metric, logs, changes, recall = [
+        lambda *a, _f=f, **kw: asyncio.run(_f(*a, **kw)) for f in make_tools(Source())
+    ]
     series = metric("m", "s")["metric"]
     assert series["summarised"] and len(series["points"]) == 10
     assert series["min"] == 0 and series["max"] == 100 and series["mean"] == 65
