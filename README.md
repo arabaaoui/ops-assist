@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 13.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 14.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
@@ -43,6 +43,7 @@ Choose a profile with `OPS_ASSIST_PROFILE`; inspect it with `ops-assist profile`
 | `mistral` | Mistral | `mistral/mistral-small-latest` | `MISTRAL_API_KEY` | Available subject to limits | [Mistral](https://console.mistral.ai/api-keys/) |
 | `openrouter` | OpenRouter | `openrouter/openai/gpt-4o-mini` | `OPENROUTER_API_KEY` | This model is paid | [OpenRouter](https://openrouter.ai/settings/keys) |
 | `mixed` | Gemini → OpenAI → Anthropic | `gemini/gemini-2.5-flash-lite`, `openai/gpt-4o-mini`, `anthropic/claude-haiku-4-5` | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Depends on provider; fallbacks may be paid | See links above |
+| `gateway` | LiteLLM proxy | `openai/ops-primary` | `OPENAI_API_KEY` | Depends on providers | proxy virtual key |
 
 Availability and free-tier limits can change; check the provider before use. Any LiteLLM provider can be selected with `OPS_ASSIST_MODELS="provider/model,provider/fallback"`. This override disables the profile's required-variable checks: configure the chosen provider's credentials yourself. Overridden models do not inherit the profile endpoint; use `OPS_ASSIST_API_BASE` for self-hosted OpenAI-compatible endpoints such as vLLM or LM Studio.
 Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
@@ -51,6 +52,7 @@ Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
 ```bash
 uv run ops-assist profile
+OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
 uv run ops-assist a2a-serve --port 8000
 uv run ops-assist mcp-serve  # MCP over stdio; skills are available in both tool modes
 uv run ops-assist tokens
@@ -61,7 +63,7 @@ uv run ops-assist investigate "Why is payment slow?"
 
 The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md).
 
 ## Layout
 
@@ -108,3 +110,7 @@ The agent loads the bundled `latency` and `errors-5xx` skills at startup in both
 ## Step 13 — security
 
 ADK callbacks classify tools and enforce read-only by default. Writes require a human channel (the CLI prompt or ADK web UI); The A2A and MCP servers never expose a write. An agent consuming MCP observation tools can still offer confirmed rollback through the CLI or ADK web UI. `OPS_ASSIST_ALLOW_WRITES=1 uv run ops-assist investigate "Why?"` exposes rollback: the CLI displays its arguments and asks for `yes` before execution. Replay changes simulated state only; live always refuses, and demo is unavailable without an injected client. Per-invocation limits are `OPS_ASSIST_MAX_TOOL_CALLS` (100) and `OPS_ASSIST_MAX_DELEGATIONS` (10). `OPS_ASSIST_STATE_DIR` selects the private state root (default `~/.local/state/ops-assist/`); `OPS_ASSIST_AUDIT_FILE` selects a plain file name within that root (default `audit.jsonl`), never a path. A durable `pending` audit entry precedes a confirmed write; redaction is heuristic. The [workshop](ateliers/13-securite/README.md) uses scripted offline tests.
+
+## Step 14 — gateway
+
+The `gateway` profile points to the OpenAI-compatible proxy configured in `deploy/litellm/config.yaml`. ADK fallback logs both models; `ask` prints the reported model to stderr and `investigate` prints received model versions, or `unknown`. A proxy may return only an alias: consult its logs to identify the actual provider. [Workshop 14](ateliers/14-passerelle/README.md) covers per-key limits and an offline path.

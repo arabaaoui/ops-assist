@@ -43,6 +43,7 @@ class InvestigationTrace(list[ToolCallTrace]):
         self.context_tokens: list[int] = []
         self.session_id = ""
         self.warnings: list[str] = []
+        self.models: list[str] = []
 
 
 def investigate(
@@ -125,6 +126,8 @@ def investigate(
             async for event in runner.run_async(
                 user_id="user", session_id=session.id, new_message=message
             ):
+                if event.model_version and event.model_version not in trace.models:
+                    trace.models.append(event.model_version)
                 if event.actions and "report" in event.actions.state_delta:
                     current_report = event.actions.state_delta["report"]
                 for part in event.content.parts if event.content and event.content.parts else []:

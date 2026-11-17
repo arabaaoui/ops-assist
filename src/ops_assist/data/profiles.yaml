@@ -32,3 +32,8 @@ profiles:
     description: Gemini, OpenAI and Anthropic fallback chain.
     models: ["gemini/gemini-2.5-flash-lite", "openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"]
     requires_env: [GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY]
+  gateway:
+    description: OpenAI-compatible LiteLLM proxy.
+    models: ["openai/ops-primary"]
+    api_base: http://127.0.0.1:4000/v1
+    requires_env: [OPENAI_API_KEY]

@@ -136,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
                 **kwargs,
             )
             print(response.choices[0].message.content)
+            print(f"Model: {getattr(response, 'model', None) or 'unknown'}", file=sys.stderr)
         elif args.command == "investigate":
             if args.incident:
                 settings = replace(settings, incident=args.incident)
@@ -165,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             print(report.model_dump_json(indent=2))
             for call in trace:
                 print(f"Tool: {call.name} {json.dumps(call.args, ensure_ascii=False)}")
+            print(f"Models: {', '.join(trace.models) or 'unknown'}")
             print(f"Session: {trace.session_id}")
             for warning in trace.warnings:
                 print(f"Warning: {warning}", file=sys.stderr)

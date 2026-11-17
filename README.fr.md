@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 13.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 14.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -43,6 +43,7 @@ Choisissez un profil avec `OPS_ASSIST_PROFILE` ; `ops-assist profile` montre sa 
 | `mistral` | Mistral | `mistral/mistral-small-latest` | `MISTRAL_API_KEY` | Oui, sous limites | [Mistral](https://console.mistral.ai/api-keys/) |
 | `openrouter` | OpenRouter | `openrouter/openai/gpt-4o-mini` | `OPENROUTER_API_KEY` | Ce modèle est payant | [OpenRouter](https://openrouter.ai/settings/keys) |
 | `mixed` | Gemini → OpenAI → Anthropic | `gemini/gemini-2.5-flash-lite`, `openai/gpt-4o-mini`, `anthropic/claude-haiku-4-5` | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Selon le fournisseur ; replis potentiellement payants | Voir les liens ci-dessus |
+| `gateway` | LiteLLM proxy | `openai/ops-primary` | `OPENAI_API_KEY` | Selon les fournisseurs | clé virtuelle du proxy |
 
 Les disponibilités et limites évoluent : vérifiez-les auprès du fournisseur. Tout fournisseur LiteLLM peut être choisi avec `OPS_ASSIST_MODELS="fournisseur/modele,fournisseur/secours"`. Cette surcharge désactive le contrôle des variables requises par le profil : configurez vous-même les identifiants du fournisseur choisi. Les modèles surchargés n'héritent pas de l'adresse du profil ; définissez `OPS_ASSIST_API_BASE` pour les serveurs compatibles OpenAI auto-hébergés comme vLLM ou LM Studio.
 Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDENTS_DIR`.
@@ -51,6 +52,7 @@ Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDEN
 
 ```bash
 uv run ops-assist profile
+OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
 uv run ops-assist a2a-serve --port 8000
 uv run ops-assist mcp-serve  # MCP sur stdio ; skills disponibles dans les deux modes
 uv run ops-assist tokens
@@ -61,7 +63,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 Les trois premières commandes fonctionnent sans modèle. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md).
 
 ## Licence
 
@@ -92,3 +94,7 @@ L’agent charge les skills intégrés `latency` et `errors-5xx` au démarrage d
 ## Étape 13 — sécurité
 
 Les callbacks ADK classent les outils et imposent la lecture seule par défaut. Les écritures exigent un canal humain (confirmation dans la CLI ou l’interface ADK web) ; les serveurs A2A et MCP n’exposent jamais d’écriture. Un agent qui consulte des outils MCP peut toujours proposer le retour arrière confirmé dans la CLI ou l’interface ADK web. `OPS_ASSIST_ALLOW_WRITES=1 uv run ops-assist investigate "Pourquoi ?"` expose le retour arrière : la CLI affiche ses arguments et demande `yes` avant l'exécution. Le rejeu modifie uniquement un état simulé ; le mode réel refuse toujours, et la démonstration est indisponible sans client injecté. Les plafonds par invocation sont `OPS_ASSIST_MAX_TOOL_CALLS` (100) et `OPS_ASSIST_MAX_DELEGATIONS` (10). `OPS_ASSIST_STATE_DIR` choisit la racine privée (par défaut `~/.local/state/ops-assist/`) ; `OPS_ASSIST_AUDIT_FILE` choisit un simple nom de fichier dans cette racine (par défaut `audit.jsonl`), jamais un chemin. Une entrée `pending` durable précède toute écriture confirmée ; l'expurgation est heuristique. Sans modèle, l'[atelier 13](ateliers/13-securite/README.md) utilise les tests scriptés.
+
+## Étape 14 — passerelle
+
+Le profil `gateway` dirige les appels vers le proxy compatible OpenAI configuré dans `deploy/litellm/config.yaml`. Le repli ADK émet un avertissement avec les deux modèles ; `ask` affiche le modèle déclaré sur stderr et `investigate` affiche les versions reçues, ou `unknown`. Un proxy peut ne renvoyer qu’un alias : consultez ses traces pour identifier le fournisseur effectif. L’[atelier 14](ateliers/14-passerelle/README.md) décrit les quotas par clé et un parcours hors ligne.
