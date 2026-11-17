@@ -83,15 +83,20 @@ def make_knowledge_tool():
                 raise ObservationError("k must be a positive integer")
             from .knowledge.embeddings import configured_embedder
             from .knowledge.index import VectorIndex
+            from .knowledge.retrieval import configured_reranker
+            from .knowledge.retrieval import search as retrieve
             from .security import StateStore
 
             def search():
-                return VectorIndex.load(StateStore(), configured_embedder()).search(
-                    query, min(k, 8)
+                return retrieve(
+                    VectorIndex.load(StateStore(), configured_embedder()),
+                    query,
+                    min(k, 8),
+                    reranker=configured_reranker(),
                 )
 
             rows = await _call("search_knowledge", search)
-            return {
+            result = {
                 "status": "ok",
                 "retrieval": "found" if rows else "none",
                 "chunks": [
@@ -105,6 +110,9 @@ def make_knowledge_tool():
                     for r in rows
                 ],
             }
+            if rows.rerank_error:
+                result.update(reranked=False, rerank_error=rows.rerank_error)
+            return result
         except Exception as e:  # noqa: BLE001
             return _failure("search_knowledge", e)
 

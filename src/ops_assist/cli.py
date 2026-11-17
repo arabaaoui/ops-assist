@@ -46,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     knowledge = commands.add_parser("knowledge")
     knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
     knowledge_commands.add_parser("index")
+    knowledge_commands.add_parser("eval")
     knowledge_search = knowledge_commands.add_parser("search")
     knowledge_search.add_argument("query")
     knowledge_search.add_argument("-k", type=int, default=5)
@@ -83,6 +84,14 @@ def main(argv: list[str] | None = None) -> int:
             from .knowledge.index import VectorIndex
             from .security import StateStore
 
+            if args.knowledge_command == "eval":
+                from .knowledge.evaluation import evaluate
+
+                for name, (recall, mrr) in evaluate().items():
+                    print(f"{name}: recall@5={recall:.3f} MRR@5={mrr:.3f}")
+                return 0
+            from .knowledge.retrieval import configured_reranker, search
+
             embedder = configured_embedder()
             store = StateStore()
             if args.knowledge_command == "index":
@@ -98,7 +107,12 @@ def main(argv: list[str] | None = None) -> int:
                 index.save(store)
                 print(f"Indexed {len(index.chunks)} chunks in {store.root / store.index_name()}")
             else:
-                results = VectorIndex.load(store, embedder).search(args.query, args.k)
+                results = search(
+                    VectorIndex.load(store, embedder),
+                    args.query,
+                    args.k,
+                    reranker=configured_reranker(),
+                )
                 if not results:
                     print("retrieval: none")
                 for result in results:

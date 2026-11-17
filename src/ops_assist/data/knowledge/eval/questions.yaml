@@ -1,0 +1,20 @@
+- question: How can I diagnose and renew an expiring certificate?
+  expected: [certificate-expiry#1, certificate-expiry#2, cert-incident#1, cert-incident#2]
+- question: What helps when an expired cache key floods the database?
+  expected: [cache-stampede#1, cache-stampede#2, cache-incident#1, cache-incident#2]
+- question: Investigate disk full and clean up files safely.
+  expected: [disk-pressure#1, disk-pressure#2, disk-incident#1, disk-incident#2]
+- question: Why are payment requests slow when connections run out?
+  expected: [payment-latency#1, pool-exhaustion#1, payment-pool-incident#1, payment-pool-incident#2]
+- question: How do I deal with a database connection leak?
+  expected: [pool-exhaustion#2, payment-pool-incident#2]
+- question: What should I check after a deployment starts producing errors?
+  expected: [deploy-5xx#1, deploy-5xx#2, rollback#1, rollback#2]
+- question: How do I safely revert a bad deployment?
+  expected: [deploy-5xx#2, rollback#1, rollback#2]
+- question: Why did payment timeouts rise when the card processor failed?
+  expected: [payment-processor-incident#1]
+- question: How did the team recover in the storage disk pressure incident?
+  expected: [disk-incident#2]
+- question: What happened when the edge certificate expired?
+  expected: [cert-incident#1, cert-incident#2]
