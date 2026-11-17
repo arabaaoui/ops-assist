@@ -155,3 +155,7 @@ Tracing is opt-in with `OPS_ASSIST_OTEL=1`. An isolated OpenTelemetry SDK provid
 ## Offline red team probes
 
 `redteam` runs six deterministic probes in temporary state with a scripted ADK model and copied replay data. It checks rollback confirmation, tool and search budgets, bounded logs, and the MCP and A2A read-only surfaces. The audit and simulated writes are checked where applicable; the remote surface probe inspects registration and policy without starting a server. `--fast` skips the poisoned log and `--json` emits structured results. The command does not evaluate a real model or prove resistance to unseen attacks. See [workshop 35](../ateliers/35-red-team/README.md).
+
+## CI/CD gates and image
+
+The workflow runs lint, the complete test suite including the forbidden-terms secret scan, source contract tests, offline report evaluation and fast red-team probes before building an image. The report gate scores only the supplied fixtures and does not measure a live model. On tags, the image is pushed to GHCR and cosign signs its immutable digest using GitHub OIDC; other events build without publishing. The image uses pinned base and uv images, frozen dependencies and a non-root runtime user. Repository branch protection must independently require the gate jobs. See [workshop 36](../ateliers/36-ci-cd/README.md).
