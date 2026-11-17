@@ -154,7 +154,7 @@ The agent loads the bundled `latency` and `errors-5xx` skills at startup in both
 
 ## Step 11 — A2A
 
-`ops-assist a2a-serve --port 8000` serves an A2A investigator on loopback. `apps/oncall_assistant` delegates questions using ADK’s remote agent; set `OPS_ASSIST_A2A_CARD_URL` to change the card URL. The [workshop](ateliers/11-a2a/README.md) includes an in-memory offline round trip. Tasks and sessions use in-memory stores. Set `OPS_ASSIST_A2A_TOKEN` on both sides to require bearer authentication; the card remains public. `OPS_ASSIST_A2A_TIMEOUT` sets the delegation deadline in seconds (default 120). Remote access requires a TLS reverse proxy that also rewrites the loopback address advertised in the card.
+`ops-assist a2a-serve --port 8000` serves an A2A investigator on loopback. `apps/oncall_assistant` delegates questions using ADK’s remote agent; set `OPS_ASSIST_A2A_CARD_URL` to change the card URL. The [workshop](ateliers/11-a2a/README.md) includes an in-memory offline round trip. Tasks and sessions use in-memory stores. Set `OPS_ASSIST_A2A_TOKEN` on both sides to require bearer authentication; the card remains public. An empty token is refused at start-up, and `OPS_ASSIST_A2A_REQUIRE_TOKEN=1` (set in the deployment examples) refuses to start without one. `OPS_ASSIST_A2A_TIMEOUT` sets the delegation deadline in seconds (default 120). Remote access requires a TLS reverse proxy that also rewrites the loopback address advertised in the card.
 
 ## Step 12 — roles / rôles
 

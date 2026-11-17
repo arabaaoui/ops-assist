@@ -393,3 +393,15 @@ def test_remote_knowledge_only_root_cause_is_rejected():
         assert output not in events[-1].model_dump_json()
 
     asyncio.run(run())
+
+
+def test_empty_or_required_token_refuses_to_start(monkeypatch):
+    from ops_assist.a2a_server import create_app
+
+    monkeypatch.setenv("OPS_ASSIST_A2A_TOKEN", "  ")
+    with pytest.raises(ValueError, match="empty"):
+        create_app(agent=object())
+    monkeypatch.delenv("OPS_ASSIST_A2A_TOKEN")
+    monkeypatch.setenv("OPS_ASSIST_A2A_REQUIRE_TOKEN", "1")
+    with pytest.raises(ValueError, match="REQUIRE_TOKEN"):
+        create_app(agent=object())

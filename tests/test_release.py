@@ -28,7 +28,8 @@ def test_deployment_manifests_are_consistent_and_restricted():
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
     assert container["securityContext"]["allowPrivilegeEscalation"] is False
     assert container["securityContext"]["capabilities"]["drop"] == ["ALL"]
-    assert container["env"][0]["valueFrom"]["secretKeyRef"]["key"] == "token"
+    token = next(e for e in container["env"] if e["name"] == "OPS_ASSIST_A2A_TOKEN")
+    assert token["valueFrom"]["secretKeyRef"]["key"] == "token"
     assert spec["volumes"][0]["emptyDir"] == {}
     assert service["kind"] == "Service"
     assert service["spec"]["selector"] == pod["metadata"]["labels"]
@@ -42,7 +43,8 @@ def test_deployment_manifests_are_consistent_and_restricted():
     assert cloud["metadata"]["annotations"]["run.googleapis.com/ingress"] == "internal"
     cloud_container = cloud["spec"]["template"]["spec"]["containers"][0]
     assert cloud["apiVersion"] == "serving.knative.dev/v1" and cloud["kind"] == "Service"
-    assert cloud_container["env"][0]["valueFrom"]["secretKeyRef"]["key"] == "latest"
+    cloud_token = next(e for e in cloud_container["env"] if e["name"] == "OPS_ASSIST_A2A_TOKEN")
+    assert cloud_token["valueFrom"]["secretKeyRef"]["key"] == "latest"
     for item in (container, cloud_container):
         assert item["command"] == ["python", "-m", "uvicorn"]
         assert "ops_assist.a2a_server:create_app" in item["args"]
@@ -90,3 +92,9 @@ def test_release_version_and_workshop():
     assert 60 <= len(workshop.splitlines()) <= 120
     assert "chapitre 42" in workshop and "hors ligne" in workshop
     assert (ROOT / "docs/known-limits.md").is_file()
+
+
+def test_deployments_require_an_a2a_token():
+    for path in ("deploy/cloudrun/service.yaml", "deploy/k8s/deployment.yaml"):
+        text = (ROOT / path).read_text()
+        assert "OPS_ASSIST_A2A_REQUIRE_TOKEN" in text and 'value: "1"' in text, path

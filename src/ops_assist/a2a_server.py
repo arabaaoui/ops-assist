@@ -83,7 +83,13 @@ class BearerMiddleware(BaseHTTPMiddleware):
 
 def create_app(port: int = 8000, agent=None):
     """Create the A2A ASGI application; allow injection for offline tests."""
-    token = os.environ.get("OPS_ASSIST_A2A_TOKEN") or None
+    raw = os.environ.get("OPS_ASSIST_A2A_TOKEN")
+    if raw is not None and not raw.strip():
+        # A provisioned but empty secret must not silently turn authentication off.
+        raise ValueError("OPS_ASSIST_A2A_TOKEN is set but empty")
+    token = raw.strip() if raw else None
+    if not token and os.environ.get("OPS_ASSIST_A2A_REQUIRE_TOKEN") == "1":
+        raise ValueError("OPS_ASSIST_A2A_REQUIRE_TOKEN=1 but OPS_ASSIST_A2A_TOKEN is not set")
     if "OPS_ASSIST_ALLOW_WRITES" in os.environ:
         logging.getLogger(__name__).warning("A2A always runs read-only; writes are disabled")
     agent = agent or build_agent(allow_writes=False)

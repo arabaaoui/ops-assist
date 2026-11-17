@@ -155,7 +155,7 @@ L’agent charge les skills intégrés `latency` et `errors-5xx` au démarrage d
 
 ## Étape 11 — A2A
 
-`ops-assist a2a-serve --port 8000` expose l’enquêteur A2A sur l’interface locale. `apps/oncall_assistant` délègue les questions via l’agent distant ADK ; `OPS_ASSIST_A2A_CARD_URL` permet de changer l’adresse de la carte. L’[atelier](ateliers/11-a2a/README.md) propose un échange hors ligne en mémoire. Les tâches et sessions sont en mémoire. Définissez `OPS_ASSIST_A2A_TOKEN` des deux côtés pour exiger une authentification bearer ; la carte reste publique. `OPS_ASSIST_A2A_TIMEOUT` fixe le délai de délégation en secondes (120 par défaut). Un accès distant nécessite un reverse proxy TLS qui adapte aussi l’adresse locale annoncée dans la carte.
+`ops-assist a2a-serve --port 8000` expose l’enquêteur A2A sur l’interface locale. `apps/oncall_assistant` délègue les questions via l’agent distant ADK ; `OPS_ASSIST_A2A_CARD_URL` permet de changer l’adresse de la carte. L’[atelier](ateliers/11-a2a/README.md) propose un échange hors ligne en mémoire. Les tâches et sessions sont en mémoire. Définissez `OPS_ASSIST_A2A_TOKEN` des deux côtés pour exiger une authentification bearer ; la carte reste publique. Un jeton vide est refusé au démarrage, et `OPS_ASSIST_A2A_REQUIRE_TOKEN=1` (posé dans les exemples de déploiement) refuse de démarrer sans jeton. `OPS_ASSIST_A2A_TIMEOUT` fixe le délai de délégation en secondes (120 par défaut). Un accès distant nécessite un reverse proxy TLS qui adapte aussi l’adresse locale annoncée dans la carte.
 
 ## Étape 12 — rôles et frontières
 

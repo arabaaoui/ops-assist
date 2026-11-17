@@ -31,6 +31,8 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            - name: OPS_ASSIST_A2A_REQUIRE_TOKEN
+              value: "1"
             - name: OPS_ASSIST_A2A_TOKEN
               valueFrom:
                 secretKeyRef:
