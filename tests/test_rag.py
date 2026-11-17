@@ -54,9 +54,10 @@ def test_tool_boundary_and_failure(monkeypatch):
     assert result["status"] == "ok" and result["retrieval"] == "found"
     assert len(result["chunks"]) == 8
     assert all(
-        set(c) == {"source", "title", "updated", "excerpt", "score"}
+        set(c) == {"source", "title", "updated", "stale", "stale_reason", "excerpt", "score"}
         and len(c["excerpt"]) <= 800
         and c["updated"]
+        and isinstance(c["stale"], bool)
         for c in result["chunks"]
     )
     assert asyncio.run(tool("payment", 0))["status"] == "error"

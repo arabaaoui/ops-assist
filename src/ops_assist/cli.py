@@ -1,6 +1,7 @@
 """Command line entry point for the workshops."""
 
 import argparse
+import getpass
 import json
 import os
 import sys
@@ -47,6 +48,16 @@ def main(argv: list[str] | None = None) -> int:
     knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
     knowledge_commands.add_parser("index")
     knowledge_commands.add_parser("eval")
+    draft_parser = knowledge_commands.add_parser("draft-postmortem")
+    draft_source = draft_parser.add_mutually_exclusive_group()
+    draft_source.add_argument("--session")
+    draft_source.add_argument("--report", type=Path)
+    approve_parser = knowledge_commands.add_parser("approve")
+    approve_parser.add_argument("draft_id")
+    approve_parser.add_argument("--yes", action="store_true")
+    approve_parser.add_argument("--approver")
+    approve_parser.add_argument("--accept-edits", action="store_true")
+    knowledge_commands.add_parser("stale")
     knowledge_search = knowledge_commands.add_parser("search")
     knowledge_search.add_argument("query")
     knowledge_search.add_argument("-k", type=int, default=5)
@@ -90,6 +101,53 @@ def main(argv: list[str] | None = None) -> int:
                 for name, (recall, mrr) in evaluate().items():
                     print(f"{name}: recall@5={recall:.3f} MRR@5={mrr:.3f}")
                 return 0
+            from .knowledge.living import approve, draft, is_stale
+
+            if args.knowledge_command == "draft-postmortem":
+                print(draft(args.session, args.report))
+                return 0
+            if args.knowledge_command == "stale":
+                from .knowledge.index import load_documents
+
+                for doc in load_documents():
+                    if is_stale(doc["updated"]):
+                        print(f"{doc['id']}  {doc['updated']}  {doc['title']}")
+                return 0
+            if args.knowledge_command == "approve":
+                tty = sys.stdin.isatty()
+                if args.approver is not None and not args.yes:
+                    raise ValueError("--approver requires --yes")
+                if not tty and not (
+                    args.yes
+                    and args.approver
+                    and os.environ.get("OPS_ASSIST_ALLOW_NONINTERACTIVE_APPROVAL") == "1"
+                ):
+                    raise ValueError(
+                        "noninteractive approval requires opt-in, --yes and --approver"
+                    )
+                if args.yes:
+                    if not args.approver or not args.approver.strip():
+                        raise ValueError("--yes requires a non-empty --approver")
+                    approver = args.approver
+                else:
+                    try:
+                        confirmed = input(f"Approve {args.draft_id}? Type yes: ").strip() == "yes"
+                        if not confirmed:
+                            raise ValueError("approval cancelled")
+                        default = getpass.getuser()
+                        approver = input(f"Approver [{default}]: ").strip() or default
+                    except EOFError as exc:
+                        raise ValueError("approval cancelled") from exc
+                print(
+                    approve(
+                        args.draft_id,
+                        configured_embedder(),
+                        approver,
+                        approval="interactive" if tty else "noninteractive",
+                        accept_edits=args.accept_edits,
+                    )
+                )
+                return 0
             from .knowledge.retrieval import configured_reranker, search
 
             embedder = configured_embedder()
@@ -116,7 +174,11 @@ def main(argv: list[str] | None = None) -> int:
                 if not results:
                     print("retrieval: none")
                 for result in results:
-                    print(f"{result['score']:.4f}  {result['id']}  {result['title']}")
+                    print(
+                        f"{result['score']:.4f}  {result['id']}  {result['title']}  "
+                        f"updated={result['updated']} stale={result['stale']} "
+                        f"stale_reason={result['stale_reason']}"
+                    )
             return 0
         settings = load_settings()
         if args.command in ("ask", "investigate") and not settings.models_overridden:
@@ -209,6 +271,9 @@ def main(argv: list[str] | None = None) -> int:
 
                 kwargs["confirm_tool"] = confirm_tool
             report, trace = investigate(args.question, settings=settings, **kwargs)
+            from .knowledge.living import save_report
+
+            save_report(report, trace.session_id)
             print(report.model_dump_json(indent=2))
             for call in trace:
                 suffix = (

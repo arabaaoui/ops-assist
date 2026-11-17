@@ -179,6 +179,9 @@ def search(
         rows = lexical.search(query, count)
     else:
         rows = fuse([index.search(query, count), lexical.search(query, count)], count)
+    from .living import freshness
+
+    rows = [{**row, **freshness(row.get("updated", ""))} for row in rows]
     if reranker is None or not rows:
         return SearchResults(rows[:k], False)
     try:

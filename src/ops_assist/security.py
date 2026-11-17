@@ -1,11 +1,13 @@
 """Tool policy, per-invocation budgets, and an append-only local audit."""
 
+import fcntl
 import json
 import os
 import re
 import secrets
 import stat
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -143,6 +145,118 @@ class StateStore:
         fd = getattr(self, "fd", None)
         if fd is not None:
             os.close(fd)
+
+    @contextmanager
+    def knowledge_directory(self, section: str, *, create: bool = False):
+        """Open private knowledge directories relative to the validated state root."""
+        if section not in {"reports", "drafts", "approved"}:
+            raise ValueError("invalid knowledge directory")
+        parent = os.dup(self.directory())
+        try:
+            for name in ("knowledge", section):
+                if create:
+                    try:
+                        os.mkdir(name, 0o700, dir_fd=parent)
+                    except FileExistsError:
+                        pass
+                try:
+                    child = os.open(
+                        name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
+                    )
+                except FileNotFoundError:
+                    raise
+                except OSError as exc:
+                    raise ValueError("knowledge directory must be a real directory") from exc
+                os.close(parent)
+                parent = child
+                info = os.fstat(parent)
+                if info.st_uid != os.getuid() or info.st_mode & 0o077:
+                    raise ValueError(
+                        "knowledge directory must be private and owned by current user"
+                    )
+            yield parent
+        finally:
+            os.close(parent)
+
+    @staticmethod
+    def _knowledge_file(directory: int, name: str):
+        _plain_name(name)
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        try:
+            _checked_file(fd)
+            if os.fstat(fd).st_mode & 0o077:
+                raise ValueError("knowledge file must be private")
+        except BaseException:
+            os.close(fd)
+            raise
+        return os.fdopen(fd, "r", encoding="utf-8")
+
+    def read_knowledge(self, section: str, name: str) -> str:
+        """Read a private, owned single-link knowledge file without following links."""
+        with self.knowledge_directory(section) as directory:
+            with self._knowledge_file(directory, name) as stream:
+                return stream.read()
+
+    def read_report_input(self, path: Path) -> str:
+        """Read an explicitly selected external report while rejecting linked files."""
+        knowledge = self.root / "knowledge"
+        if Path(os.path.abspath(path)).is_relative_to(knowledge) or path.resolve().is_relative_to(
+            knowledge.resolve()
+        ):
+            raise ValueError("use --session or the last report for stored knowledge")
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            _checked_file(fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            return stream.read()
+
+    def list_knowledge(self, section: str) -> list[str]:
+        """List a knowledge directory through its descriptor."""
+        try:
+            with self.knowledge_directory(section) as directory:
+                return sorted(os.listdir(directory))
+        except FileNotFoundError:
+            return []
+
+    def write_knowledge(self, section: str, name: str, text: str, *, replace: bool = False):
+        """Atomically install a private file after validating any existing destination."""
+        _plain_name(name)
+        with self.knowledge_directory(section, create=True) as directory:
+            fcntl.flock(directory, fcntl.LOCK_EX)
+            try:
+                with self._knowledge_file(directory, name):
+                    if not replace:
+                        raise FileExistsError(name)
+            except FileNotFoundError:
+                pass
+            temporary = ".knowledge-" + secrets.token_hex(16)
+            fd = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory,
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(text)
+                os.replace(temporary, name, src_dir_fd=directory, dst_dir_fd=directory)
+            finally:
+                try:
+                    os.unlink(temporary, dir_fd=directory)
+                except FileNotFoundError:
+                    pass
+        return self.root / "knowledge" / section / name
+
+    def remove_knowledge(self, section: str, name: str) -> None:
+        """Remove a validated knowledge file relative to its private directory."""
+        with self.knowledge_directory(section) as directory:
+            fcntl.flock(directory, fcntl.LOCK_EX)
+            with self._knowledge_file(directory, name):
+                pass
+            os.unlink(name, dir_fd=directory)
 
     def open_audit(self):
         """Open a private single-link audit file relative to the anchored root."""

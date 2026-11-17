@@ -11,37 +11,49 @@ from ..security import StateStore
 from .embeddings import Embedder, normalize
 
 
+def parse_document(text: str, name: str) -> dict:
+    """Validate front matter and calculate a content checksum."""
+    parts = text.split("---", 2)
+    if len(parts) != 3 or parts[0].strip():
+        raise ValueError(f"invalid front matter: {name}")
+    meta = yaml.safe_load(parts[1])
+    if not isinstance(meta, dict) or not all(
+        meta.get(k) for k in ("id", "title", "service", "updated", "owner")
+    ):
+        raise ValueError(f"incomplete front matter: {name}")
+    return {
+        "id": str(meta["id"]),
+        "title": str(meta["title"]),
+        "service": str(meta["service"]),
+        "updated": str(meta["updated"]),
+        "body": parts[2],
+        "checksum": hashlib.sha256(text.encode()).hexdigest(),
+    }
+
+
 def load_documents() -> list[dict]:
-    """Load and validate packaged documents with checksums."""
-    root = files("ops_assist").joinpath("data/knowledge")
-    documents = []
-    seen = set()
-    for folder in ("runbooks", "postmortems"):
-        for path in sorted(root.joinpath(folder).iterdir(), key=lambda p: p.name):
-            if not path.name.endswith(".md"):
-                continue
-            text = path.read_text(encoding="utf-8")
-            parts = text.split("---", 2)
-            if len(parts) != 3 or parts[0].strip():
-                raise ValueError(f"invalid front matter: {path.name}")
-            meta = yaml.safe_load(parts[1])
-            if not isinstance(meta, dict) or not all(
-                meta.get(k) for k in ("id", "title", "service", "updated", "owner")
-            ):
-                raise ValueError(f"incomplete front matter: {path.name}")
-            if meta["id"] in seen:
-                raise ValueError(f"duplicate document id: {meta['id']}")
-            seen.add(meta["id"])
-            documents.append(
-                {
-                    "id": str(meta["id"]),
-                    "title": str(meta["title"]),
-                    "service": str(meta["service"]),
-                    "updated": str(meta["updated"]),
-                    "body": parts[2],
-                    "checksum": hashlib.sha256(text.encode()).hexdigest(),
-                }
-            )
+    """Load packaged and human-approved local documents, never drafts."""
+    packaged = files("ops_assist").joinpath("data/knowledge")
+    paths = [
+        path
+        for folder in ("runbooks", "postmortems")
+        for path in sorted(packaged.joinpath(folder).iterdir(), key=lambda p: p.name)
+        if path.name.endswith(".md")
+    ]
+    documents, seen = [], set()
+    sources = [(path.name, path.read_text(encoding="utf-8")) for path in paths]
+    store = StateStore()
+    sources.extend(
+        (name, store.read_knowledge("approved", name))
+        for name in store.list_knowledge("approved")
+        if name.endswith(".md")
+    )
+    for name, text in sources:
+        doc = parse_document(text, name)
+        if doc["id"] in seen:
+            raise ValueError(f"duplicate document id: {doc['id']}")
+        seen.add(doc["id"])
+        documents.append(doc)
     return documents
 
 
@@ -155,8 +167,14 @@ class VectorIndex:
         if len(vectors) != 1 or len(vectors[0]) != self.dimension:
             raise ValueError("query embedding dimension mismatch")
         vector = normalize(vectors[0])
+        from .living import freshness
+
         scored = [
-            {**chunk, "score": sum(a * b for a, b in zip(vector, row, strict=True))}
+            {
+                **chunk,
+                **freshness(chunk.get("updated", "")),
+                "score": sum(a * b for a, b in zip(vector, row, strict=True)),
+            }
             for chunk, row in zip(self.chunks, self.vectors, strict=True)
         ]
         return sorted(scored, key=lambda item: (-item["score"], item["id"]))[:k]

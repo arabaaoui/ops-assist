@@ -117,6 +117,8 @@ def make_knowledge_tool():
                         "source": str(r["id"])[:300],
                         "title": str(r["title"])[:300],
                         "updated": str(r.get("updated", ""))[:40],
+                        "stale": r.get("stale", True),
+                        "stale_reason": r.get("stale_reason"),
                         "excerpt": str(r["text"])[:800],
                         "score": r["score"],
                     }
@@ -130,6 +132,7 @@ def make_knowledge_tool():
 
                 from .knowledge.graph import GraphError, dependencies, service_names
                 from .knowledge.index import load_documents
+                from .knowledge.living import freshness
 
                 try:
                     matches = [
@@ -161,6 +164,7 @@ def make_knowledge_tool():
                             "source": c["id"][:300],
                             "title": c["title"][:300],
                             "updated": c["updated"][:40],
+                            **freshness(c.get("updated", "")),
                             "excerpt": c["text"][:800],
                         }
                         for c in expanded

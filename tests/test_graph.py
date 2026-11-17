@@ -63,6 +63,10 @@ def test_expansion_offline():
     assert "expanded_chunks" not in plain
     assert any(c["source"].startswith("payments-db#") for c in expanded["expanded_chunks"])
     assert any(e["to"] == "payments-db" for e in expanded["expansion_edges"])
+    assert all(
+        c["updated"] and isinstance(c["stale"], bool) and "stale_reason" in c
+        for c in expanded["expanded_chunks"]
+    )
     assert len(expanded["expanded_chunks"]) <= 8
     assert call(tool, "payment-api", expand="yes")["status"] == "error"
     assert call(tool, "unrelated", expand=True)["expanded_chunks"] == []
@@ -174,3 +178,19 @@ def test_invalid_age_is_graph_error_and_preserves_triage(monkeypatch):
     assert (
         "dependency graph unavailable:" in pretriage(ReplaySource("payment-latency")).warnings[-1]
     )
+
+
+def test_expansion_marks_future_documents_stale():
+    from datetime import UTC, datetime, timedelta
+
+    index = VectorIndex.build(HashEmbedder())
+    tomorrow = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+    for chunk in index.chunks:
+        if chunk["id"].startswith("payments-db#"):
+            chunk["updated"] = tomorrow
+    index.save(StateStore())
+    result = call(make_knowledge_tool(), "payment-api", k=1, expand=True)
+    rows = [c for c in result["expanded_chunks"] if c["source"].startswith("payments-db#")]
+    assert rows
+    assert all(c["updated"] == tomorrow and c["stale"] is True for c in rows)
+    assert all(c["stale_reason"] == "date in the future" for c in rows)
