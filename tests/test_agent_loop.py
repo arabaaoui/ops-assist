@@ -118,5 +118,6 @@ def test_the_agent_starts_read_only_with_a_report_schema():
         "get_logs",
         "get_changes",
         "recall_past_incidents",
+        "search_knowledge",
     ]
     assert agent.output_schema is IncidentReport

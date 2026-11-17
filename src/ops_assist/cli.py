@@ -86,11 +86,22 @@ def main(argv: list[str] | None = None) -> int:
             embedder = configured_embedder()
             store = StateStore()
             if args.knowledge_command == "index":
-                index = VectorIndex.build(embedder)
+                try:
+                    previous = VectorIndex.load(store, embedder)
+                except FileNotFoundError:
+                    previous = None
+                except ValueError as exc:
+                    if "embedder mismatch" not in str(exc):
+                        raise
+                    previous = None
+                index = VectorIndex.build(embedder, previous)
                 index.save(store)
                 print(f"Indexed {len(index.chunks)} chunks in {store.root / store.index_name()}")
             else:
-                for result in VectorIndex.load(store, embedder).search(args.query, args.k):
+                results = VectorIndex.load(store, embedder).search(args.query, args.k)
+                if not results:
+                    print("retrieval: none")
+                for result in results:
                     print(f"{result['score']:.4f}  {result['id']}  {result['title']}")
             return 0
         settings = load_settings()

@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 15.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 16.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -65,7 +65,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md).
 
 ## Organisation
 
@@ -80,7 +80,7 @@ src/ops_assist/
   mcp_server.py, a2a_server.py  protocol servers
   observability/      replay, Prometheus and Loki sources
   skills/             bundled investigation methods
-  knowledge/          embeddings and flat vector index
+  knowledge/          ingestion, embeddings, manifest and flat vector index
   data/               profiles, fictional incidents and knowledge corpus
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
@@ -125,3 +125,7 @@ Le profil `gateway` dirige les appels vers le proxy compatible OpenAI configuré
 ## Étape 15 — embeddings
 
 La commande `knowledge index` construit un index local des sections du corpus fictif ; `knowledge search` les classe par similarité cosinus. Le hachage déterministe est le défaut hors ligne. `OPS_ASSIST_EMBEDDINGS` sélectionne un modèle LiteLLM et `OPS_ASSIST_EMBEDDINGS_API_BASE` son serveur ; `OPS_ASSIST_INDEX_FILE` choisit un nom de fichier simple dans `OPS_ASSIST_STATE_DIR` (par défaut `~/.local/state/ops-assist`). Reconstruisez l’index après un changement de modèle ou de corpus. La similarité ne garantit pas la pertinence ; consultez les documents. Voir l’[atelier 15](ateliers/15-embeddings/README.md).
+
+## Étape 16 — recherche et citations
+
+`knowledge index` réindexe les documents modifiés grâce à un manifeste de checksums ; `knowledge search` classe les sections hors ligne avec le hachage. Le coordinateur dispose de `search_knowledge` (huit extraits bornés au maximum), absent des experts et du serveur MCP. `investigate` signale les citations inconnues dans `citation_warnings` et affiche un avertissement. Une citation existante ne garantit ni vérité ni fraîcheur. Voir l’[atelier 16](ateliers/16-rag/README.md).

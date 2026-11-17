@@ -123,7 +123,7 @@ def test_embedding_response_validation_and_private_endpoint(monkeypatch):
 def test_index_rejects_wrong_vector_shapes_and_nonfinite():
     e = HashEmbedder()
     with pytest.raises(ValueError, match="matching"):
-        VectorIndex(e, [], [])
+        VectorIndex(e, [{}], [])
     with pytest.raises(ValueError, match="dimensions"):
         VectorIndex(e, [{}, {}], [[1], [1, 2]])
     with pytest.raises(ValueError, match="finite"):

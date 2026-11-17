@@ -97,7 +97,10 @@ def test_topology_ownership_and_validation(monkeypatch):
         and e.disallow_transfer_to_parent
         for e in experts.values()
     )
-    assert [t.__name__ for t in agent.tools if callable(t)] == ["recall_past_incidents"]
+    assert [t.__name__ for t in agent.tools if callable(t)] == [
+        "recall_past_incidents",
+        "search_knowledge",
+    ]
     assert "Delegate metrics" in agent.instruction
     assert all("pretriage_data" in expert.instruction for expert in experts.values())
 

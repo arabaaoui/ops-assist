@@ -8,9 +8,43 @@ than inventing a root cause.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+# Match identifiers embedded in prose as well as standalone source fields.
+CHUNK_ID = re.compile(
+    r"(?<![\w#])(?:runbook:|postmortem:)?[A-Za-z0-9_][A-Za-z0-9_.-]*#[0-9]+(?![\w#])"
+)
+OBSERVATION_SOURCE = re.compile(
+    r"(?:^|/)(?:alerts|metrics|logs|changes)(?:/|$)|^get_(?:alerts|metric|logs|changes)(?:\b|:)"
+)
+
+
+def knowledge_citations(report: IncidentReport) -> set[str]:
+    """Find chunk IDs in all report text, excluding generated warnings."""
+    texts = [report.summary, *report.unknowns]
+    texts.extend(value for fact in report.facts for value in (fact.statement, fact.source))
+    texts.extend(hypothesis.statement for hypothesis in report.hypotheses)
+    if report.proposed_action:
+        texts.extend((report.proposed_action.target, report.proposed_action.reason))
+    return {match.group() for text in texts for match in CHUNK_ID.finditer(text)}
+
+
+def check_observation_support(report: IncidentReport) -> None:
+    """Refuse a root cause unless each retained hypothesis cites an observation."""
+    if report.status != "root_cause_identified":
+        return
+    if not report.hypotheses or any(
+        not any(
+            not CHUNK_ID.search(report.facts[i].source)
+            and OBSERVATION_SOURCE.search(report.facts[i].source)
+            for i in hypothesis.supporting_facts
+        )
+        for hypothesis in report.hypotheses
+    ):
+        raise ValueError("root cause requires observation support for each retained hypothesis")
 
 
 class Fact(BaseModel):
@@ -46,6 +80,10 @@ class IncidentReport(BaseModel):
     summary: str = Field(description="Two or three sentences a human on call can act on.")
     status: Literal["root_cause_identified", "hypotheses_only", "insufficient_data"]
     facts: list[Fact] = Field(default_factory=list)
+    citation_warnings: list[str] = Field(
+        default_factory=list,
+        description="Knowledge citation and observation warnings set after investigation.",
+    )
     hypotheses: list[Hypothesis] = Field(default_factory=list)
     unknowns: list[str] = Field(
         default_factory=list, description="What would be needed to conclude."

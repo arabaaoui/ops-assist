@@ -20,7 +20,7 @@ from .agent import build_agent
 from .config import Settings, load_settings
 from .memory import remember
 from .observability import ObservationSource, source_from_env
-from .report import IncidentReport
+from .report import CHUNK_ID, IncidentReport, check_observation_support, knowledge_citations
 from .triage import pretriage
 
 logger = logging.getLogger(__name__)
@@ -157,6 +157,29 @@ def investigate(
         if current_report is None:
             raise ValueError("agent returned no report")
         report = IncidentReport.model_validate(current_report)
+        check_observation_support(report)
+        citations = knowledge_citations(report)
+        report.citation_warnings = [
+            f"Fact {i}: knowledge, not observation ({fact.source})"
+            for i, fact in enumerate(report.facts)
+            if CHUNK_ID.search(fact.source)
+        ]
+        if citations:
+            from .knowledge.embeddings import configured_embedder
+            from .knowledge.index import VectorIndex
+            from .security import StateStore
+
+            try:
+                index = VectorIndex.load(StateStore(), configured_embedder())
+                known = {chunk["id"] for chunk in index.chunks}
+                report.citation_warnings.extend(
+                    f"Unknown knowledge citation: {s}" for s in sorted(citations - known)
+                )
+            except (OSError, ValueError, TypeError):
+                report.citation_warnings.append(
+                    "Knowledge citations could not be verified: index unavailable"
+                )
+            trace.warnings.extend(report.citation_warnings)
         try:
             remember(report, services)
         except Exception:  # noqa: BLE001 - preserve a valid report

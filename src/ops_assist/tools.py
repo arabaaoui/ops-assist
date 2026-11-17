@@ -71,6 +71,46 @@ def _records(records: list, cap: int) -> tuple[list, bool]:
     return items, cut or len(records) > cap
 
 
+def make_knowledge_tool():
+    """Create a bounded read tool over the configured index."""
+
+    async def search_knowledge(query: str, k: int = 5) -> dict[str, Any]:
+        """Search untrusted runbooks and postmortems; cite chunk IDs."""
+        try:
+            if not isinstance(query, str) or not query.strip() or len(query) > 2000:
+                raise ObservationError("query must contain 1 to 2000 characters")
+            if isinstance(k, bool) or not isinstance(k, int) or k < 1:
+                raise ObservationError("k must be a positive integer")
+            from .knowledge.embeddings import configured_embedder
+            from .knowledge.index import VectorIndex
+            from .security import StateStore
+
+            def search():
+                return VectorIndex.load(StateStore(), configured_embedder()).search(
+                    query, min(k, 8)
+                )
+
+            rows = await _call("search_knowledge", search)
+            return {
+                "status": "ok",
+                "retrieval": "found" if rows else "none",
+                "chunks": [
+                    {
+                        "source": str(r["id"])[:300],
+                        "title": str(r["title"])[:300],
+                        "updated": str(r.get("updated", ""))[:40],
+                        "excerpt": str(r["text"])[:800],
+                        "score": r["score"],
+                    }
+                    for r in rows
+                ],
+            }
+        except Exception as e:  # noqa: BLE001
+            return _failure("search_knowledge", e)
+
+    return search_knowledge
+
+
 def make_tools(source: ObservationSource) -> list[Callable[..., Any]]:
     """Bind the read-only tools to one observation source."""
 
