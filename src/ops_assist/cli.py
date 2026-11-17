@@ -35,6 +35,13 @@ def main(argv: list[str] | None = None) -> int:
     eval_run.add_argument("--repeat", type=int, default=1)
     eval_run.add_argument("--show-reports", action="store_true")
     eval_run.add_argument("--compare-tiers", action="store_true")
+    bench = commands.add_parser("bench", help="measure streamed generation")
+    bench.add_argument("--profile")
+    bench.add_argument("--runs", type=int, default=3)
+    bench.add_argument("--prompt-file", type=Path, required=True)
+    bench.add_argument("--allow-remote", action="store_true")
+    bench.add_argument("--ollama", action="store_true")
+    bench.add_argument("--json", action="store_true")
     doctor = commands.add_parser("doctor", help="inspect local hardware")
     doctor.add_argument("--json", action="store_true")
     doctor.add_argument("--ollama", action="store_true", help="probe local Ollama")
@@ -89,6 +96,34 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "bench":
+            from .bench import benchmark
+
+            env = dict(os.environ)
+            if args.profile:
+                env["OPS_ASSIST_PROFILE"] = args.profile
+            settings = load_settings(env)
+            with args.prompt_file.open("rb") as file:
+                prompt = file.read(65537).decode("utf-8")
+            result = benchmark(
+                settings, prompt, args.runs, allow_remote=args.allow_remote, ollama=args.ollama
+            )
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(f"Profile: {result['profile']}  Model: {result['model']}")
+                print("Metric                     Median       Min       Max  Samples")
+                for name, stats in result["summary"].items():
+                    if stats is None:
+                        print(f"{name:26} unavailable")
+                    else:
+                        print(
+                            f"{name:26} {stats['median']:9.3f} {stats['min']:9.3f} "
+                            f"{stats['max']:9.3f} {stats['samples']:8}"
+                        )
+                if args.ollama:
+                    print(f"Ollama memory: {json.dumps(result['ollama_memory'])}")
+            return 0
         if args.command == "doctor":
             from .doctor import diagnose
 
