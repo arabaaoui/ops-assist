@@ -171,3 +171,7 @@ The [failure review](failure-review.md) maps the need, available data, validatio
 ## Agent registry
 
 The root `catalog-info.yaml` describes a Backstage Component with an agent extension under `spec.agent`: ownership placeholder, purpose, tool access, rights, configured profile model identifiers, an illustrative monthly budget, and links to evaluation policy and the behaviour changelog. The offline catalog test discovers in-process tools across both topologies with writes enabled, expands the ADK skill toolset, and checks classifications against the security policy, including its default-write rule. The inventory includes ADK's script tool as a write; the bundled skills contain no scripts. External profiles, dynamic tool additions and deployment-specific overrides require separate review. Profile model IDs can be mutable provider aliases; the catalog records identifiers, not guaranteed immutable provider revisions. The budget is informational and is not metered or enforced. No CLI or environment variable is added. See [workshop 39](../ateliers/39-echelle/README.md).
+
+## Production readiness review
+
+The [production review](production-review.md) maps capabilities, validation, observability and stopping or recovery to repository evidence and records gaps before deployment. [Workshop 40](../ateliers/40-production/README.md) applies the same questions offline. This documentation adds no CLI command, configuration, model call or dependency.
