@@ -153,3 +153,11 @@ def missing_fast_keys(settings: Settings, env: dict[str, str]) -> list[str]:
         if (provider := model.partition("/")[0].lower()) in PROVIDER_KEYS
     }
     return sorted(key for key in required if not env.get(key, "").strip())
+
+
+def check_profile_env(settings: Settings, env: dict[str, str]) -> None:
+    """Check declared variables without printing their values."""
+    if not settings.models_overridden:
+        missing = [key for key in settings.requires_env if not env.get(key, "").strip()]
+        if missing:
+            raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")

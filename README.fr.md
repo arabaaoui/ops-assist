@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 29.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 30.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : presque chaque
 chapitre lui ajoute une capacité, étiquetée `etape-NN`. Les chapitres 1 à 4 correspondent aux étapes 1 à 4 ; le
@@ -45,6 +45,9 @@ Choisissez un profil avec `OPS_ASSIST_PROFILE` ; `ops-assist profile` montre sa 
 | `openrouter` | OpenRouter | `openrouter/openai/gpt-4o-mini` | `OPENROUTER_API_KEY` | Ce modèle est payant | [OpenRouter](https://openrouter.ai/settings/keys) |
 | `mixed` | Gemini → OpenAI → Anthropic | `gemini/gemini-2.5-flash-lite`, `openai/gpt-4o-mini`, `anthropic/claude-haiku-4-5` | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Selon le fournisseur ; replis potentiellement payants | Voir les liens ci-dessus |
 | `gateway` | LiteLLM proxy | `openai/ops-primary` | `OPENAI_API_KEY` | Selon les fournisseurs | clé virtuelle du proxy |
+| `vertex` | Vertex AI | `vertex_ai/gemini-3.1-flash-lite` | `VERTEXAI_PROJECT`, `VERTEXAI_LOCATION`, ADC | Selon le compte | ADC |
+| `bedrock` | Bedrock | `bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION_NAME` | Selon le compte | Identifiants AWS |
+| `azure` | Azure | `azure/gpt-4o` | `AZURE_API_KEY`, `AZURE_API_BASE`, `AZURE_API_VERSION` | Selon le compte | Clé Azure |
 
 Les disponibilités et limites évoluent : vérifiez-les auprès du fournisseur. Tout fournisseur LiteLLM peut être choisi avec `OPS_ASSIST_MODELS="fournisseur/modele,fournisseur/secours"`. Cette surcharge désactive le contrôle des variables requises par le profil : configurez vous-même les identifiants du fournisseur choisi. Les modèles surchargés n'héritent pas de l'adresse du profil ; définissez `OPS_ASSIST_API_BASE` pour les serveurs compatibles OpenAI auto-hébergés comme vLLM ou LM Studio.
 Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDENTS_DIR`.
@@ -56,6 +59,7 @@ Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDEN
 ```bash
 uv run ops-assist doctor --json
 uv run ops-assist bench --profile local --runs 3 --prompt-file /tmp/ops-prompt.txt
+uv run ops-assist profiles
 uv run ops-assist profile
 OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
 uv run ops-assist a2a-serve --port 8000
@@ -78,7 +82,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?" --show-contex
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md).
 
 ## Organisation
 
@@ -102,7 +106,7 @@ src/ops_assist/
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
-ateliers/             ateliers en français, dont le matériel et les piles d’accélérateurs
+ateliers/             ateliers en français, dont les profils de déploiement cloud
 tests/                offline contract and integration tests
 ```
 
@@ -191,3 +195,7 @@ La commande hors ligne `python3 ateliers/24-lora/make_dataset.py` affiche le jeu
 ## Étape 29 — inférence
 
 `bench --profile local --runs 3 --prompt-file FICHIER [--ollama] [--json]` mesure la latence et le débit en flux ; un profil, modèle ou endpoint distant exige `--allow-remote`. Le débit nécessite le nombre de tokens renvoyé par LiteLLM. Voir l’[atelier 29](ateliers/29-inference/README.md) pour les limites et le parcours hors ligne.
+
+## Étape 30 — profils cloud
+
+`ops-assist profiles` affiche les lieux, les indications de résidence et les variables manquantes sans révéler leurs valeurs. Les profils `vertex`, `bedrock` et `azure` sont décrits dans l’[atelier 30](ateliers/30-clouds/README.md), avec leurs limites et un parcours hors ligne. ADC pour Vertex ne peut pas être vérifié hors ligne. Bedrock exige ici des identifiants explicites ; Azure exige un nom de déploiement correspondant.

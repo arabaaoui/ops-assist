@@ -1,11 +1,13 @@
 """Measure streamed text generation without treating chunks as tokens."""
 
+import os
 import statistics
 import time
 from urllib.parse import urlsplit
 
 import litellm
 
+from .config import check_profile_env
 from .doctor import Probes, _ollama_models
 
 
@@ -31,6 +33,7 @@ def benchmark(
     local_base = not base or urlsplit(base).hostname in ("localhost", "127.0.0.1", "::1")
     if not allow_remote and (settings.profile != "local" or not local_model or not local_base):
         raise ValueError("remote profile, model or endpoint requires --allow-remote")
+    check_profile_env(settings, dict(os.environ))
     clock = clock or time.perf_counter
     completion = completion or litellm.completion
     samples = []

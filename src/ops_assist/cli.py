@@ -12,7 +12,13 @@ import litellm
 from litellm.rust_bridge.tokenizer import anthropic
 from pydantic import ValidationError
 
-from .config import PROFILES_FILE, _load_profiles, load_settings, missing_fast_keys
+from .config import (
+    PROFILES_FILE,
+    _load_profiles,
+    check_profile_env,
+    load_settings,
+    missing_fast_keys,
+)
 from .memory import forget, list_memories
 from .observability import ObservationError, ReplaySource
 from .report import IncidentReport, check_observation_support
@@ -45,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor = commands.add_parser("doctor", help="inspect local hardware")
     doctor.add_argument("--json", action="store_true")
     doctor.add_argument("--ollama", action="store_true", help="probe local Ollama")
+    commands.add_parser("profiles", help="list deployment profiles")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -177,12 +184,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.profile:
                     env["OPS_ASSIST_PROFILE"] = args.profile
                 settings = load_settings(env)
-                if not settings.models_overridden:
-                    missing = [key for key in settings.requires_env if not env.get(key, "").strip()]
-                    if missing:
-                        raise ValueError(
-                            f"Missing required environment variable(s): {', '.join(missing)}"
-                        )
+                check_profile_env(settings, env)
                 if args.compare_tiers or os.environ.get("OPS_ASSIST_TOPOLOGY") == "experts":
                     missing = missing_fast_keys(settings, env)
                     if missing:
@@ -243,11 +245,24 @@ def main(argv: list[str] | None = None) -> int:
             check_observation_support(report)
             print("OK")
             return 0
-        if args.command == "profile" and args.list:
+        if args.command == "profiles" or (args.command == "profile" and args.list):
             path = Path(os.environ.get("OPS_ASSIST_PROFILES_FILE") or PROFILES_FILE)
             for name, profile in _load_profiles(path).items():
                 required = ", ".join(profile["requires_env"]) or "none"
-                print(f"{name}: {profile['description']} (requires: {required})")
+                missing = (
+                    ", ".join(
+                        key
+                        for key in profile["requires_env"]
+                        if not os.environ.get(key, "").strip()
+                    )
+                    or "none"
+                )
+                print(
+                    f"{name}: {profile['description']} "
+                    f"(location: {profile.get('location', 'unspecified')}; "
+                    f"residency: {profile.get('residency', 'unspecified')}; "
+                    f"requires: {required}; missing: {missing})"
+                )
             return 0
         if args.command == "knowledge":
             from .knowledge.embeddings import configured_embedder
@@ -340,10 +355,8 @@ def main(argv: list[str] | None = None) -> int:
                     )
             return 0
         settings = load_settings()
-        if args.command in ("ask", "investigate") and not settings.models_overridden:
-            missing = [key for key in settings.requires_env if not os.environ.get(key, "").strip()]
-            if missing:
-                raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
+        if args.command in ("ask", "investigate"):
+            check_profile_env(settings, dict(os.environ))
         if args.command == "investigate" and os.environ.get("OPS_ASSIST_TOPOLOGY") == "experts":
             missing = missing_fast_keys(settings, dict(os.environ))
             if missing:

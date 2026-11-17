@@ -11,12 +11,13 @@ the first chunk of an answer has been sent.
 from __future__ import annotations
 
 import logging
+import os
 
 from google.adk.models import FallbackModel
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.lite_llm import LiteLlm
 
-from .config import Settings
+from .config import Settings, check_profile_env
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,12 @@ class NotifyingLiteLlm(LiteLlm):
     """Log a transition only when ADK will try the next configured model."""
 
     fallback_next: str | None = None
+    profile_settings: Settings | None = None
 
     async def generate_content_async(self, llm_request, stream=False):
         """Forward responses and report a retriable failure before output."""
+        if self.profile_settings is not None:
+            check_profile_env(self.profile_settings, dict(os.environ))
         emitted = False
         try:
             async for response in super().generate_content_async(llm_request, stream):
@@ -50,7 +54,7 @@ def build_model(settings: Settings) -> BaseLlm:
         kwargs["drop_params"] = True
     models = []
     for index, name in enumerate(settings.models):
-        model = NotifyingLiteLlm(model=name, **kwargs)
+        model = NotifyingLiteLlm(model=name, profile_settings=settings, **kwargs)
         if index + 1 < len(settings.models):
             model.fallback_next = settings.models[index + 1]
         models.append(model)

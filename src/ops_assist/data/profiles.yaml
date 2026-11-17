@@ -1,11 +1,15 @@
 # Model ids are examples; OPS_ASSIST_MODELS overrides the ordered chain.
 profiles:
   local:
+    location: local
+    residency: Data stays on the configured local host.
     description: Ollama running locally with a tool-capable model.
     models: ["ollama_chat/qwen3:8b"]
     api_base: http://localhost:11434
     requires_env: []
   gemini: &gemini
+    location: managed API
+    residency: Depends on provider and account settings.
     description: Gemini hosted models with a fallback.
     models: ["gemini/gemini-2.5-flash", "gemini/gemini-2.5-flash-lite"]
     requires_env: [GEMINI_API_KEY]
@@ -13,27 +17,57 @@ profiles:
     <<: *gemini
     description: Alias of the gemini profile, retained for existing workshops.
   openai:
+    location: managed API
+    residency: Depends on provider and account settings.
     description: OpenAI hosted model.
     models: ["openai/gpt-4o-mini"]
     requires_env: [OPENAI_API_KEY]
   anthropic:
+    location: managed API
+    residency: Depends on provider and account settings.
     description: Anthropic hosted model.
     models: ["anthropic/claude-haiku-4-5"]
     requires_env: [ANTHROPIC_API_KEY]
   mistral:
+    location: managed API
+    residency: Depends on provider and account settings.
     description: Mistral hosted model.
     models: ["mistral/mistral-small-latest"]
     requires_env: [MISTRAL_API_KEY]
   openrouter:
+    location: managed API
+    residency: Depends on provider and account settings.
     description: OpenRouter hosted model.
     models: ["openrouter/openai/gpt-4o-mini"]
     requires_env: [OPENROUTER_API_KEY]
   mixed:
+    location: managed API
+    residency: Depends on provider and account settings.
     description: Gemini, OpenAI and Anthropic fallback chain.
     models: ["gemini/gemini-2.5-flash-lite", "openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"]
     requires_env: [GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY]
   gateway:
+    location: gateway
+    residency: Depends on proxy routing and provider settings.
     description: OpenAI-compatible LiteLLM proxy.
     models: ["openai/ops-primary"]
     api_base: http://127.0.0.1:4000/v1
     requires_env: [OPENAI_API_KEY]
+  vertex:
+    description: Vertex AI cloud deployment; ADC is also required.
+    location: dedicated cloud
+    residency: Depends on configured location and service terms.
+    models: ["vertex_ai/gemini-3.1-flash-lite"]
+    requires_env: [VERTEXAI_PROJECT, VERTEXAI_LOCATION]
+  bedrock:
+    description: Bedrock cloud deployment using environment credentials.
+    location: dedicated cloud
+    residency: Inference profile may route across regions; check service terms.
+    models: ["bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0"]
+    requires_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION_NAME]
+  azure:
+    description: Azure deployment; deployment name must match the configured model.
+    location: dedicated cloud
+    residency: Depends on deployment type, region and service terms.
+    models: ["azure/gpt-4o"]
+    requires_env: [AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION]
