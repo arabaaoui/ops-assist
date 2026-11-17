@@ -163,3 +163,7 @@ The workflow runs lint, the complete test suite including the forbidden-terms se
 ## Failure review
 
 The [failure review](failure-review.md) maps the need, available data, validation, costs and ownership to repository evidence. It records the missing owner and the gap between scripted cost scenarios and measured per-investigation monetary cost. [Workshop 37](../ateliers/37-echecs/README.md) applies the same grid offline without adding a CLI command or configuration.
+
+## Platform starter
+
+`new-agent NAME --dir PATH` creates a read-only skeleton in an absent or empty directory. It reuses the platform profile loader, LiteLLM model routing and security callbacks, with writes explicitly disabled. Its fictional example tool is classified as read and returns bounded data; its prompt treats tool results as untrusted. The generated skill is a starting document, not automatically loaded. Offline tests check construction, policy and the evaluation fixture. The generated CI checks out a platform repository and revision configured through repository variables `OPS_ASSIST_REPOSITORY` and `OPS_ASSIST_REF`; select an immutable reviewed revision. The team owns its domain tools, prompt, evaluation and CI configuration. See [workshop 38](../ateliers/38-plateforme/README.md).

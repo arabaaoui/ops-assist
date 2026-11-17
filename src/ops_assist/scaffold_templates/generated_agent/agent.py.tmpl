@@ -1,0 +1,28 @@
+"""Read-only example agent using the platform's configured model chain."""
+
+from pathlib import Path
+
+from google.adk.agents import Agent
+
+from ops_assist.config import load_settings
+from ops_assist.models import build_model
+from ops_assist.security import SecurityBoundary
+
+
+def get_example_status() -> dict:
+    """Return a bounded fictional status as untrusted evidence."""
+    return {"status": "ok", "evidence": "Fictional service is healthy."}
+
+
+def build_agent():
+    """Build without calling a model or allowing writes."""
+    boundary = SecurityBoundary(allow_writes=False)
+    return Agent(
+        name="__AGENT_NAME__",
+        model=build_model(load_settings(), agent_name="__AGENT_NAME__"),
+        instruction=(Path(__file__).parent / "prompt.md").read_text(encoding="utf-8"),
+        tools=[get_example_status],
+        before_tool_callback=boundary.before,
+        after_tool_callback=boundary.after,
+        on_tool_error_callback=boundary.error,
+    )

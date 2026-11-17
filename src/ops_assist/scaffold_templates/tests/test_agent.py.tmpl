@@ -1,0 +1,50 @@
+"""Offline checks for the generated agent."""
+
+import json
+import socket
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from generated_agent.agent import build_agent, get_example_status
+from ops_assist.security import TOOL_ACCESS
+
+
+@pytest.fixture(autouse=True)
+def offline(monkeypatch, tmp_path):
+    def deny(*args, **kwargs):
+        raise AssertionError("network is forbidden")
+
+    monkeypatch.setattr(socket.socket, "connect", deny)
+    monkeypatch.setattr(socket.socket, "connect_ex", deny)
+    monkeypatch.setattr(socket, "create_connection", deny)
+    monkeypatch.setenv("OPS_ASSIST_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("OPS_ASSIST_PROFILE", "local")
+    monkeypatch.setenv("OPS_ASSIST_MODELS", "test/model")
+    monkeypatch.setenv("OPS_ASSIST_ALLOW_WRITES", "1")
+
+
+def test_build_and_policy():
+    agent = build_agent()
+    assert agent.name == "__AGENT_NAME__"
+    assert "untrusted data" in agent.instruction
+    assert agent.tools == [get_example_status]
+    assert agent.model.model == "test/model"
+    assert agent.before_tool_callback.__self__.allow_writes is False
+    assert agent.after_tool_callback and agent.on_tool_error_callback
+    assert TOOL_ACCESS["get_example_status"] == "read"
+    context = SimpleNamespace(invocation_id="test", tool_confirmation=None)
+    before = agent.before_tool_callback
+    assert before(SimpleNamespace(name="get_example_status"), {}, context) is None
+    assert before(SimpleNamespace(name="rollback_deployment"), {}, context)["reason"] == "read_only"
+    assert before(SimpleNamespace(name="unknown_write"), {}, context)["reason"] == "read_only"
+
+
+def test_evidence_is_bounded_and_matches_fixture():
+    result = get_example_status()
+    fixture = json.loads((Path(__file__).parents[1] / "eval/example.json").read_text())
+    assert result["status"] == "ok"
+    assert result["evidence"] == fixture["expected_evidence"]
+    assert len(json.dumps(result)) <= 256
+    assert fixture["question"]

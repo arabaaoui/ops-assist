@@ -31,6 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     """Parse and execute a command."""
     parser = argparse.ArgumentParser(prog="ops-assist")
     commands = parser.add_subparsers(dest="command", required=True)
+    new = commands.add_parser("new-agent", help="generate a read-only agent skeleton")
+    new.add_argument("name")
+    new.add_argument("--dir", type=Path, required=True)
     redteam = commands.add_parser("redteam", help="run offline security regression probes")
     redteam.add_argument("--fast", action="store_true")
     redteam.add_argument("--json", action="store_true")
@@ -113,6 +116,12 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "new-agent":
+            from .scaffold import new_agent
+
+            new_agent(args.name, args.dir)
+            print(f"Created agent {args.name} in {args.dir}")
+            return 0
         if args.command == "redteam":
             from .redteam import run_suite
 

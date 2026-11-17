@@ -18,6 +18,7 @@ from .observability import ReplaySource
 
 # Unknown names are writes. Expert tools are delegations as well as reads.
 TOOL_ACCESS = {
+    "get_example_status": "read",
     "search_knowledge": "read",
     "get_dependencies": "read",
     "get_alerts": "read",
