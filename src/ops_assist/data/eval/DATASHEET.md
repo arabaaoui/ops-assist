@@ -6,7 +6,7 @@ This dataset supports reproducible, offline evaluation of incident investigation
 
 ## Composition
 
-Version 1.1.0 contains six fictional recordings. Each has a question, alert, metric series, logs, changes (possibly empty), and a separate answer key with status, cause, evidence sources and forbidden conclusions. Four cases retain causal links as accepted hypotheses with `hypotheses_only`; one case deliberately lacks sufficient evidence and expects `insufficient_data`. A future scorer must accept the recorded status and hypothesis without demanding an unproven causal conclusion. No incident scoring engine is included yet. The manifest checksum covers the questions and recording files, including answer keys.
+Version 1.1.0 contains six fictional recordings. Each has a question, alert, metric series, logs, changes (possibly empty), and a separate answer key with status, cause, evidence sources and forbidden conclusions. Four cases retain causal links as accepted hypotheses with `hypotheses_only`; one case deliberately lacks sufficient evidence and expects `insufficient_data`. `ops-assist eval run` (step 23) scores reports using a structured, lexical heuristic that accepts the recorded status and hypothesis without demanding an unproven causal conclusion. The manifest checksum covers the questions and recording files, including answer keys.
 
 ## Collection
 

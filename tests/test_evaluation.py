@@ -238,3 +238,59 @@ def test_report_and_error_are_redacted_and_error_bounded(monkeypatch):
     assert result["results"][1]["report"] is None and not result["results"][1]["passed"]
     assert all(c["allow_writes"] is False and c["save_memory"] is False for c in calls)
     assert all(c["settings"].session_db is None for c in calls)
+
+
+def test_hypotheses_only_uses_highest_confidence_and_ties():
+    expected = json.loads((DATA / "incidents/inc-2026-0412/expected.json").read_text())
+    report = report_for("inc-2026-0412")
+    report["hypotheses"][0]["confidence"] = 0
+    report["hypotheses"].append(
+        {"statement": "wrong cause", "confidence": 1, "supporting_facts": [0]}
+    )
+    assert not score_report(report, expected)["root_cause"]
+    report["hypotheses"][0]["confidence"] = 1
+    assert score_report(report, expected)["root_cause"]
+
+
+@pytest.mark.parametrize("incident", ["payment-latency", "inc-2026-0412"])
+@pytest.mark.parametrize(
+    "contradiction",
+    [
+        "The service {service} was not involved.",
+        "{change} was excluded.",
+        "Ruled out.",
+        "Excluded.",
+    ],
+)
+def test_credited_statement_rejects_contradictions(incident, contradiction):
+    expected = json.loads((DATA / "incidents" / incident / "expected.json").read_text())
+    report = report_for(incident)
+    _, service, change, _ = CASES[incident]
+    report["hypotheses"][0]["statement"] += " " + contradiction.format(
+        service=service, change=change
+    )
+    assert not score_report(report, expected)["root_cause"]
+
+
+def test_forbidden_negation_must_be_local():
+    expected = json.loads((DATA / "incidents/payment-latency/expected.json").read_text())
+    report = report_for("payment-latency")
+    report["summary"] = "The database host ran out of disk space without warning."
+    assert not score_report(report, expected)["forbidden"]
+
+
+@pytest.mark.parametrize(
+    "text,affirmed",
+    [
+        ("not a b c database failure", False),
+        ("not a b c d database failure", True),
+        ("database failure a b ruled out", False),
+        ("database failure a b c ruled out", True),
+        ("database failure without warning", True),
+        ("database failure was excluded", False),
+    ],
+)
+def test_forbidden_phrase_negation_window(text, affirmed):
+    from ops_assist.evaluation import _forbidden_affirmed
+
+    assert _forbidden_affirmed(text, "database failure") is affirmed

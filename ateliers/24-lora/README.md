@@ -43,7 +43,7 @@ Un modèle aux poids accessibles n'est pas nécessairement libre de tout usage.
    ```
 
    Résultat attendu : 21 exemples d'entraînement, 7 de test et cinq classes.
-   Les noms et résumés proviennent des alertes fictives du replay ;
+   Les noms et résumés proviennent du fichier fictif dédié `alerts.json`, distinct des incidents d’évaluation ;
    des formulations distinctes produisent les deux partitions.
 
 3. Vérifiez la séparation et le caractère déterministe :

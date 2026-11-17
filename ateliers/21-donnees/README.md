@@ -11,7 +11,7 @@ Un enregistrement de rejeu rassemble les alertes, métriques, journaux et change
 Le corrigé décrit le statut attendu, la cause quand elle est étayée et les conclusions interdites.
 `insufficient_data` signifie que les observations ne suffisent pas à établir une cause.
 `hypotheses_only` conserve une explication plausible sans prétendre qu’elle est démontrée.
-Les corrigés indiquent les statuts et hypothèses acceptés ; il n’existe pas encore de scoreur automatique.
+Les corrigés indiquent les statuts et hypothèses acceptés ; `ops-assist eval run` (étape 23) évalue les rapports avec une heuristique structurée et lexicale.
 Une question d'évaluation est distincte du corpus utilisé pour aider l'enquêteur.
 Le corpus contient des procédures générales ; il ne prouve pas la cause d'un incident.
 Une datasheet décrit la provenance, l'usage et les limites d'un jeu de données.

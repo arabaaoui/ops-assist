@@ -223,3 +223,36 @@ def test_unmeasured_request_is_unknown_not_previous_count(monkeypatch):
     )
     assert trace.unknown_calls == 1
     assert trace.approximate_calls == len(trace.context_tokens) > 1
+
+
+def test_fast_override_endpoint_routing():
+    for env, expected in [
+        ({}, "http://localhost:11434"),
+        ({"OPS_ASSIST_FAST_MODELS": "hosted/fast"}, None),
+        (
+            {"OPS_ASSIST_FAST_MODELS": "hosted/fast", "OPS_ASSIST_FAST_API_BASE": "http://fast"},
+            "http://fast",
+        ),
+        ({"OPS_ASSIST_FAST_MODELS": "ollama_chat/qwen3:8b"}, None),
+    ]:
+        settings = load_settings(env)
+        agent = build_agent(settings, topology="experts")
+        for expert in agent.sub_agents:
+            models = getattr(expert.model, "models", [expert.model])
+            assert all(m._additional_args.get("api_base") == expected for m in models)
+
+
+def test_zero_usage_is_estimated():
+    class ZeroUsage(RolesModel):
+        async def generate_content_async(self, llm_request, stream=False):
+            async for response in super().generate_content_async(llm_request, stream):
+                response.usage_metadata = types.GenerateContentResponseUsageMetadata(
+                    total_token_count=0
+                )
+                yield response
+
+    _, trace = investigate(
+        "Why?", model=ZeroUsage(seen=[]), topology="experts", measure_usage=True, save_memory=False
+    )
+    assert trace.total_tokens > 0
+    assert trace.approximate_calls == len(trace.context_tokens) > 0

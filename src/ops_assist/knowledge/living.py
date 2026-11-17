@@ -11,7 +11,7 @@ import yaml
 
 from ..memory import SECRET
 from ..report import IncidentReport, check_observation_support
-from ..security import StateStore
+from ..security import StateStore, _redact
 
 
 def root() -> Path:
@@ -63,9 +63,9 @@ def save_report(
     payload = json.dumps(
         {
             "session": session,
-            "report": report.model_dump(),
-            "incident_id": incident_id,
-            "question": question,
+            "report": _redact(report.model_dump()),
+            "incident_id": incident_id if incident_id and not SECRET.search(incident_id) else None,
+            "question": question if question and not SECRET.search(question) else None,
         },
         ensure_ascii=False,
     )

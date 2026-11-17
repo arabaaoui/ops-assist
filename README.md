@@ -7,8 +7,9 @@ and the facts they rest on) and from what it **does not know**.
 
 **Status: step 26.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
-It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
-capability. Version française : [README.fr.md](README.fr.md).
+It is the hands-on project of a French video course on AI agent engineering: almost every chapter adds one
+capability, tagged `etape-NN`. Chapters 1 to 4 match steps 1 to 4; chapter 5 (the harness) has no step of
+its own, so from chapter 6 on, step N belongs to chapter N+1. Version française : [README.fr.md](README.fr.md).
 
 ## Principles
 
@@ -173,6 +174,6 @@ Compare profiles with `ops-assist eval run`; the literal score and its limitatio
 
 The offline workshop dataset command `python3 ateliers/24-lora/make_dataset.py` prints fictional train/test JSON; see [workshop 24](ateliers/24-lora/README.md). It adds no ops-assist CLI command.
 
-`OPS_ASSIST_FAST_MODELS` selects the expert fallback chain; it defaults to the main chain. `eval run --compare-tiers` compares experts on both tiers with the same coordinator, reporting pass rate, token usage and elapsed time. Unknown measurements are counted separately; failed calls may leave token totals incomplete. Evaluation requires in-process tools. Sampling variance remains even with a fixed seed. See [workshop 25](ateliers/25-distillation/README.md).
+`OPS_ASSIST_FAST_MODELS` selects the expert fallback chain; it defaults to the main chain. When overridden, fast models do not inherit the profile endpoint; set `OPS_ASSIST_FAST_API_BASE` to specify one. Profile fast models use the main profile endpoint. `eval run --compare-tiers` compares experts on both tiers with the same coordinator, reporting pass rate, token usage and elapsed time. Unknown measurements are counted separately; failed calls may leave token totals incomplete. Evaluation requires in-process tools. Sampling variance remains even with a fixed seed. See [workshop 25](ateliers/25-distillation/README.md).
 
 `feedback --report <file|last> --up|--down [--comment TEXT]` saves private feedback under `OPS_ASSIST_STATE_DIR`; `feedback export --pairs` prints offline JSONL. Pairs require distinct reports, the same known incident and question, and opposite net ratings: votes are summed per report, and a report with as many up as down votes is contested and left out, so a pair is never exported in both directions. The incident and question in an explicit file are trusted as given. Explicit files may wrap `report`, `incident_id` and `question`; plain reports have no pairing metadata. Redaction is heuristic and no training occurs. See [workshop 26](ateliers/26-renforcement/README.md).

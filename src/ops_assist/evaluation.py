@@ -35,10 +35,20 @@ def _sentences(text: str) -> list[str]:
 
 
 def _affirmative_tokens(text: str, tokens: list[str]) -> bool:
-    return any(
+    sentences = _sentences(text)
+    affirmative = any(
         not NEGATION.search(sentence) and all(_contains(sentence, token) for token in tokens)
-        for sentence in _sentences(text)
+        for sentence in sentences
     )
+    contradicted = any(
+        NEGATION.search(sentence)
+        and (
+            any(_contains(sentence, token) for token in tokens)
+            or re.fullmatch(r"(?:ruled?\s+out|excluded)[.!?]*", sentence, re.IGNORECASE)
+        )
+        for sentence in sentences
+    )
+    return affirmative and not contradicted
 
 
 def _word_forms(text: str) -> list[str]:
@@ -69,20 +79,31 @@ def _word_forms(text: str) -> list[str]:
 
 
 def _forbidden_affirmed(text: str, phrase: str) -> bool:
+    """Match normalized words; only nearby negation qualifies the forbidden phrase."""
     target = _word_forms(phrase)
     if not target:
         return False
     for sentence in _sentences(text):
-        if NEGATION.search(sentence):
-            continue
         words = _word_forms(sentence)
-        if any(words[i : i + len(target)] == target for i in range(len(words))):
-            return True
+        for i in range(len(words)):
+            if words[i : i + len(target)] != target:
+                continue
+            before = " ".join(words[max(0, i - 4) : i])
+            after = " ".join(words[i + len(target) : i + len(target) + 4])
+            if not NEGATION.search(before) and not re.search(
+                r"\b(?:rul(?:e)? out|exclud(?:e)?)\b", after
+            ):
+                return True
     return False
 
 
 def score_report(report, expected: dict) -> dict[str, bool]:
-    """Score structured hypotheses and conservative lexical sentence checks."""
+    """Score structured reports with lexical checks, not semantic interpretation.
+
+    Only the most confident hypotheses count for hypothesis-only answers (ties count).
+    A matching statement fails if another sentence negates either expected token or
+    simply rules it out. Forbidden phrases use a four-word local negation window.
+    """
     try:
         report = IncidentReport.model_validate(report)
         check_observation_support(report)
@@ -98,8 +119,10 @@ def score_report(report, expected: dict) -> dict[str, bool]:
             retained.statement, [expected["root_cause_service"], expected["root_cause_change"]]
         )
     elif status == "hypotheses_only":
+        highest = max((h.confidence for h in report.hypotheses), default=None)
         matching = any(
-            _affirmative_tokens(hypothesis.statement, [entry["service"], entry["change"]])
+            hypothesis.confidence == highest
+            and _affirmative_tokens(hypothesis.statement, [entry["service"], entry["change"]])
             for hypothesis in report.hypotheses
             for entry in expected.get("accepted_hypotheses", [])
         )
@@ -155,7 +178,12 @@ def _evaluate(settings, repeat, *, model=None, compare=False):
     dataset = load_dataset()
     tiers = (
         {
-            "main": replace(settings, fast_models=settings.models, deterministic=True),
+            "main": replace(
+                settings,
+                fast_models=settings.models,
+                fast_api_base=settings.api_base,
+                deterministic=True,
+            ),
             "fast": replace(settings, deterministic=True),
         }
         if compare

@@ -11,7 +11,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
-def test_dataset_is_deterministic_disjoint_and_uses_replay():
+def test_dataset_is_deterministic_and_disjoint():
     data = module.make_dataset()
     assert data == module.make_dataset()
     assert len(data["train"]) == 21
@@ -34,3 +34,12 @@ def test_dataset_is_deterministic_disjoint_and_uses_replay():
 def test_dataset_command_outputs_json():
     result = subprocess.run([sys.executable, str(PATH)], check=True, capture_output=True, text=True)
     assert json.loads(result.stdout) == module.make_dataset()
+
+
+def test_dataset_excludes_evaluation_services_and_summaries():
+    root = PATH.parents[2] / "src/ops_assist/data/incidents"
+    texts = [row["text"].casefold() for rows in module.make_dataset().values() for row in rows]
+    for path in root.glob("*/alerts.json"):
+        for alert in json.loads(path.read_text()):
+            for key in ("service", "summary"):
+                assert all(alert[key].casefold() not in text for text in texts)

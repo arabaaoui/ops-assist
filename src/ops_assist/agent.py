@@ -108,9 +108,15 @@ def build_agent(
                 after_tool_callback=security.after,
                 on_tool_error_callback=security.error,
                 description=f"Gather evidence using {', '.join(names)}; return sourced findings.",
-                model=build_model(replace(settings, models=settings.fast_models or settings.models))
-                if settings.fast_models and settings.fast_models != settings.models
-                else build_model(settings),
+                model=build_model(
+                    replace(
+                        settings,
+                        models=settings.fast_models or settings.models,
+                        api_base=settings.fast_api_base
+                        if settings.fast_models
+                        else settings.api_base,
+                    )
+                ),
                 instruction=(
                     "Gather evidence only within your assigned tools. Return sourced facts and "
                     "unknowns to the coordinator; do not create the final incident report. "

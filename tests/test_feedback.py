@@ -108,3 +108,20 @@ def test_cli_validation_and_link_confinement(tmp_path, capsys):
     with pytest.raises(ValueError):
         collect(str(path), "other")
     capsys.readouterr()
+
+
+def test_redacted_equivalent_reports_share_votes(tmp_path):
+    path = tmp_path / "report.json"
+    for summary, rating in [
+        ("A token=one", "up"),
+        ("A token=two", "down"),
+        ("B token=one", "up"),
+        ("B token=two", "down"),
+    ]:
+        path.write_text(
+            json.dumps(
+                {"report": report(summary).model_dump(), "incident_id": "a", "question": "Why?"}
+            )
+        )
+        collect(str(path), rating)
+    assert pairs() == []

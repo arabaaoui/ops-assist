@@ -7,8 +7,9 @@ un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **n
 
 **État : étape 26.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
-C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
-chapitre lui ajoute une capacité. English version: [README.md](README.md).
+C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : presque chaque
+chapitre lui ajoute une capacité, étiquetée `etape-NN`. Les chapitres 1 à 4 correspondent aux étapes 1 à 4 ; le
+chapitre 5 (le harness) n'a pas d'étape propre, donc à partir du chapitre 6, l'étape N relève du chapitre N+1. English version: [README.md](README.md).
 
 ## Principes
 
@@ -173,6 +174,6 @@ Comparez les profils avec `ops-assist eval run` ; le score littéral et ses limi
 
 La commande hors ligne `python3 ateliers/24-lora/make_dataset.py` affiche le jeu fictif train/test en JSON ; voir l’[atelier 24](ateliers/24-lora/README.md). Elle n’ajoute aucune commande à la CLI ops-assist.
 
-`OPS_ASSIST_FAST_MODELS` choisit la chaîne de repli des experts ; elle reprend par défaut la chaîne principale. `eval run --compare-tiers` compare les deux niveaux avec le même coordinateur : réussite, jetons et durée. Les mesures inconnues sont comptées à part ; les appels échoués peuvent rendre le total incomplet. L’évaluation exige les outils en processus. Une variance d’échantillonnage subsiste malgré la graine fixe. Voir l’[atelier 25](ateliers/25-distillation/README.md).
+`OPS_ASSIST_FAST_MODELS` choisit la chaîne de repli des experts ; elle reprend par défaut la chaîne principale. En cas de remplacement, les modèles rapides ne reprennent pas l’adresse du profil ; utilisez `OPS_ASSIST_FAST_API_BASE` pour en définir une. Les modèles rapides du profil utilisent l’adresse principale du profil. `eval run --compare-tiers` compare les deux niveaux avec le même coordinateur : réussite, jetons et durée. Les mesures inconnues sont comptées à part ; les appels échoués peuvent rendre le total incomplet. L’évaluation exige les outils en processus. Une variance d’échantillonnage subsiste malgré la graine fixe. Voir l’[atelier 25](ateliers/25-distillation/README.md).
 
 `feedback --report <fichier|last> --up|--down [--comment TEXTE]` conserve les retours privés dans `OPS_ASSIST_STATE_DIR` ; `feedback export --pairs` affiche du JSONL hors ligne. Une paire exige deux rapports distincts, le même incident et la même question connus, et des notes nettes opposées : les votes d’un rapport s’additionnent, un rapport qui a autant de votes pour que contre est contesté et ne sert dans aucune paire, si bien qu’une paire n’est jamais exportée dans les deux sens. L’incident et la question d’un fichier fourni sont pris tels quels. Un fichier peut contenir `report`, `incident_id` et `question` ; un rapport seul ne fournit pas ces métadonnées. L’expurgation est heuristique et aucun entraînement n’est effectué. Voir l’[atelier 26](ateliers/26-renforcement/README.md).

@@ -24,7 +24,8 @@ def collect(source: str, rating: str, comment: str = "") -> None:
     envelope = raw if isinstance(raw, dict) and "report" in raw else {}
     report = IncidentReport.model_validate(envelope.get("report", raw))
     check_observation_support(report)
-    canonical = report.model_dump_json()
+    redacted = _redact(report.model_dump())
+    canonical = json.dumps(redacted, sort_keys=True)
     incident = envelope.get("incident_id")
     question = envelope.get("question")
     if incident is not None and (not isinstance(incident, str) or not incident.strip()):
@@ -38,7 +39,7 @@ def collect(source: str, rating: str, comment: str = "") -> None:
         "rating": rating,
         "comment": SECRET.sub("[redacted]", comment),
         "timestamp": datetime.now(UTC).isoformat(),
-        "report": _redact(report.model_dump()),
+        "report": redacted,
     }
     store.write_knowledge("feedback", secrets.token_hex(16) + ".json", json.dumps(record))
 

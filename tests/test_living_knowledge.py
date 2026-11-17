@@ -382,3 +382,13 @@ def test_explicit_report_rejects_linked_knowledge_directory(tmp_path):
     (knowledge / "reports").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="use --session"):
         draft(report_file=knowledge / "reports" / "last.json")
+
+
+def test_saved_report_redacts_secrets_and_drops_secret_metadata():
+    import json
+
+    save_report(report(), "session-a", incident_id="token=fictional", question="password=fictional")
+    stored = json.loads(StateStore().read_knowledge("reports", "last.json"))
+    assert stored["report"]["summary"] == "[redacted]"
+    assert stored["report"]["unknowns"] == ["[redacted]"]
+    assert stored["incident_id"] is None and stored["question"] is None

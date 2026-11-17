@@ -1,0 +1,37 @@
+[
+  {
+    "name": "HttpErrorsHigh",
+    "service": "atlas-gateway",
+    "summary": "Request failures exceed the normal threshold."
+  },
+  {
+    "name": "ErrorRateElevated",
+    "service": "beacon-worker",
+    "summary": "Job responses show an elevated error rate."
+  },
+  {
+    "name": "MemoryLookupMissHigh",
+    "service": "comet-memory",
+    "summary": "Lookup misses increased during the morning window."
+  },
+  {
+    "name": "TLSHandshakeFailuresHigh",
+    "service": "delta-edge",
+    "summary": "Secure connection handshakes are failing repeatedly."
+  },
+  {
+    "name": "DiskUsageHigh",
+    "service": "ember-storage",
+    "summary": "Filesystem utilization crossed the warning threshold."
+  },
+  {
+    "name": "HighLatencyP95",
+    "service": "falcon-search",
+    "summary": "Search response latency increased beyond its objective."
+  },
+  {
+    "name": "HighLatencyP95",
+    "service": "grove-indexer",
+    "summary": "Indexing requests have slowed considerably."
+  }
+]

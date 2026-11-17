@@ -164,7 +164,7 @@ def investigate(
     def measure_after(callback_context, llm_response):
         prompt_count = pending_counts.pop(callback_context.agent_name, None)
         usage = llm_response.usage_metadata
-        if usage is not None and usage.total_token_count is not None:
+        if usage is not None and usage.total_token_count:
             trace.total_tokens += usage.total_token_count
         elif prompt_count is None:
             trace.unknown_calls += 1

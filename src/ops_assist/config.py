@@ -28,6 +28,7 @@ class Settings:
     models: list[str]
     fast_models: list[str] = field(default_factory=list)
     api_base: str | None = None
+    fast_api_base: str | None = None
     incident: str = "payment-latency"
     session_db: str | None = None
     requires_env: list[str] = field(default_factory=list)
@@ -125,6 +126,9 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         models=models,
         fast_models=fast_models,
         api_base=api_base,
+        fast_api_base=(env.get("OPS_ASSIST_FAST_API_BASE") or None)
+        if "OPS_ASSIST_FAST_MODELS" in env
+        else api_base,
         incident=env.get("OPS_ASSIST_INCIDENT", "").strip() or "payment-latency",
         session_db=env.get("OPS_ASSIST_SESSION_DB") or None,
         requires_env=list(profile["requires_env"]),

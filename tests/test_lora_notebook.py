@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from ops_assist.memory import SECRET
+
 NOTEBOOK = Path(__file__).resolve().parents[1] / "ateliers/24-lora/lora_alert_classifier.ipynb"
 
 
@@ -15,3 +17,4 @@ def test_lora_notebook_is_valid_and_has_no_outputs():
     assert "transformers==" in source and "peft==" in source, "versions must be pinned"
     assert "make_dataset" in source
     assert "API_KEY=" not in source, "no key in the notebook"
+    assert not SECRET.search(source)
