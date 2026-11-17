@@ -28,7 +28,12 @@ def main(argv: list[str] | None = None) -> int:
     a2a = commands.add_parser("a2a-serve", help="serve the investigator over A2A on loopback")
     a2a.add_argument("--port", type=int, default=8000)
     eval_parser = commands.add_parser("eval")
-    eval_parser.add_subparsers(dest="eval_command", required=True).add_parser("list")
+    eval_commands = eval_parser.add_subparsers(dest="eval_command", required=True)
+    eval_commands.add_parser("list")
+    eval_run = eval_commands.add_parser("run")
+    eval_run.add_argument("--profile")
+    eval_run.add_argument("--repeat", type=int, default=1)
+    eval_run.add_argument("--show-reports", action="store_true")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -75,6 +80,36 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "eval":
             from .evaluation_dataset import load_dataset
 
+            if args.eval_command == "run":
+                from .evaluation import evaluate
+
+                env = dict(os.environ)
+                if args.profile:
+                    env["OPS_ASSIST_PROFILE"] = args.profile
+                settings = load_settings(env)
+                if not settings.models_overridden:
+                    missing = [key for key in settings.requires_env if not env.get(key, "").strip()]
+                    if missing:
+                        raise ValueError(
+                            f"Missing required environment variable(s): {', '.join(missing)}"
+                        )
+                result, path = evaluate(settings, args.repeat)
+                print("Incident                 Run  Valid Status Root Sources Forbidden Result")
+                for row in result["results"]:
+                    values = " ".join("OK" if value else "FAIL" for value in row["checks"].values())
+                    outcome = "PASS" if row["passed"] else "FAIL"
+                    print(f"{row['incident']:24} {row['iteration']:3}  {values} {outcome}")
+                    if args.show_reports:
+                        print(
+                            json.dumps(
+                                {"report": row["report"], "error": row["error"]},
+                                ensure_ascii=False,
+                                indent=2,
+                            )
+                        )
+                print(f"Pass rate: {result['pass_rate']:.1%}")
+                print(f"Result: {path}")
+                return 0
             dataset = load_dataset()
             print(f"Dataset version: {dataset['version']}")
             for case in dataset["incidents"]:

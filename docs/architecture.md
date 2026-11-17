@@ -18,7 +18,7 @@ The observation interface and replay source live in `src/ops_assist/observabilit
 
 ## Reasoning and planning
 
-The deterministic pre-triage in `src/ops_assist/triage.py` selects candidates, while `src/ops_assist/agent.py`, `src/ops_assist/models.py` and `src/ops_assist/prompts/investigator.md` configure the model and instruction. ADK runs the model and its tool loop; planning is implicit in model choices, not a guaranteed plan. Explicit planning and evaluation are future work.
+The deterministic pre-triage in `src/ops_assist/triage.py` selects candidates, while `src/ops_assist/agent.py`, `src/ops_assist/models.py` and `src/ops_assist/prompts/investigator.md` configure the model and instruction. ADK runs the model and its tool loop; planning is implicit in model choices, not a guaranteed plan. Explicit planning is future work; incident evaluation is described below.
 
 ## Action
 
@@ -26,7 +26,7 @@ Read-only tools in `src/ops_assist/tools.py` retrieve evidence and bounded summa
 
 ## Learning
 
-`src/ops_assist/memory.py` stores validated report summaries and supports recall; `src/ops_assist/run.py` uses ADK in-memory sessions by default or SQLite sessions when `OPS_ASSIST_SESSION_DB` is set. SQLite persists session events and state and permits resuming a session by ID; it is separate from long-term summaries. ADK provides both session services. This is retrieval, not model learning: feedback, evaluation and adaptation remain future work.
+`src/ops_assist/memory.py` stores validated report summaries and supports recall; `src/ops_assist/run.py` uses ADK in-memory sessions by default or SQLite sessions when `OPS_ASSIST_SESSION_DB` is set. SQLite persists session events and state and permits resuming a session by ID; it is separate from long-term summaries. ADK provides both session services. This is retrieval, not model learning: automated feedback and adaptation remain future work.
 
 ## Communication
 
@@ -90,6 +90,14 @@ Drafts are excluded from retrieval. Approval records the supplied reviewer, UTC 
 
 ## Incident evaluation data
 
-The versioned offline manifest in `data/eval/` lists six fictional replay cases and their questions. Its checksum covers each question and all six recording files, including the answer key; published version checksums are checked against the packaged `data/eval/published.yaml` registry at load time and historical entries are pinned in tests. The datasheet records provenance, intended use and limitations. Replay reads only the five observation files, rejecting symbolic links and answer keys; token counting uses the same allowlist. Evaluation answers are kept outside the knowledge corpus, prompts, skills and examples, with an exact-text regression guard. This guard cannot detect paraphrases, and the public dataset is not a secret benchmark. Four cases accept causal links as hypotheses without requiring an unproven conclusion; the answer keys define accepted statuses and hypotheses but no incident scoring engine is implemented. No new agent tool or model call is introduced.
+The versioned offline manifest in `data/eval/` lists six fictional replay cases and their questions. Its checksum covers each question and all six recording files, including the answer key; published version checksums are checked against the packaged `data/eval/published.yaml` registry at load time and historical entries are pinned in tests. The datasheet records provenance, intended use and limitations. Replay reads only the five observation files, rejecting symbolic links and answer keys; token counting uses the same allowlist. Evaluation answers are kept outside the knowledge corpus, prompts, skills and examples, with an exact-text regression guard. This guard cannot detect paraphrases, and the public dataset is not a secret benchmark. Four cases accept causal links as hypotheses without requiring an unproven conclusion; the answer keys define accepted statuses and hypotheses for the scoring engine below. Evaluation introduces no new agent tool.
 
 The offline `tokens --all` command enumerates the configured replay directory and counts only observation files with LiteLLM’s bundled tokenizer. Each incident is compared separately with the selected model’s `max_input_tokens` metadata when available; the estimate excludes instructions, tool schemas, history and output and may differ from the server’s actual limit.
+
+## Incident evaluation
+
+`ops-assist eval run` loads the validated versioned dataset, runs each question with its bundled replay source and a fresh in-memory session, and scores the report against the separate answer key. Status, report validity and required fact source categories are checked. For a known root cause, the highest-confidence hypothesis must contain both expected identifiers in one affirmative sentence. For `hypotheses_only`, at least one hypothesis must contain the service and change from an accepted entry in one affirmative sentence. For `insufficient_data`, unknowns must be nonempty and no hypothesis may have confidence above 0.5. A status mismatch always fails.
+
+Sentence-level English negation markers include `not`, `no`, `ruled out`, `excluded`, `unlikely`, `rather than` and `instead of`. A marker anywhere in a sentence makes that sentence non-affirmative; this conservative heuristic does not understand scope, double negation, synonyms or causal meaning. Forbidden conclusions are checked in summary and hypotheses, sentence by sentence, with case folding and a small set of simple inflections; paraphrases and intervening words can evade the check. Neither cited sources nor identifier mentions prove the evidence or causal link. Review reports as well as scores.
+
+Failures and investigation errors remain in the denominator. Evaluation disables tool writes and does not append investigation summaries, but existing memory and retrieval configuration can affect a run; keep them fixed for comparisons. The private result file in the confined state directory contains the dataset checksum, profile, model IDs, per-case checks, validated reports and bounded errors. Reports and errors receive heuristic secret redaction, which cannot guarantee removal of all sensitive content. `--show-reports` prints those same redacted reports and errors. See [decision 0002](decisions/0002-no-fine-tuning.md) and [workshop 23](../ateliers/23-changer-un-modele/README.md).

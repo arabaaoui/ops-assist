@@ -112,6 +112,8 @@ def investigate(
     session_id: str | None = None,
     show_context: bool = False,
     confirm_tool: Callable[[str, dict[str, Any]], bool] | None = None,
+    allow_writes: bool | None = None,
+    save_memory: bool = True,
 ) -> tuple[IncidentReport, InvestigationTrace]:
     """Run an investigation in a new or resumed session and validate its report."""
     settings = settings or load_settings()
@@ -130,7 +132,7 @@ def investigate(
             raise ValueError("MCP tools require an environment-configured source")
         agent = build_agent(settings)
     else:
-        agent = build_agent(settings, source)
+        agent = build_agent(settings, source, allow_writes=allow_writes)
     trace = InvestigationTrace()
 
     def measure(callback_context, llm_request):
@@ -240,7 +242,8 @@ def investigate(
                 )
             trace.warnings.extend(report.citation_warnings)
         try:
-            remember(report, services)
+            if save_memory:
+                remember(report, services)
         except Exception:  # noqa: BLE001 - preserve a valid report
             logger.exception("Could not save investigation memory")
             trace.warnings.append("Could not save investigation memory")
