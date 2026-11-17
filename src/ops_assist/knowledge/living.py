@@ -57,12 +57,17 @@ def save_report(
     *,
     incident_id: str | None = None,
     question: str | None = None,
+    settings=None,
 ) -> None:
     """Atomically store the final validated report for later drafting."""
+    from ..config import load_settings
+    from ..fingerprint import fingerprint
+
     store = StateStore()
     payload = json.dumps(
         {
             "session": session,
+            "fingerprint": fingerprint(settings or load_settings()),
             "report": _redact(report.model_dump()),
             "incident_id": incident_id if incident_id and not SECRET.search(incident_id) else None,
             "question": question if question and not SECRET.search(question) else None,

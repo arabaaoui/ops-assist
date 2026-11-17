@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 31.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 32.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: almost every chapter adds one
 capability, tagged `etape-NN`. Chapters 1 to 4 match steps 1 to 4; chapter 5 (the harness) has no step of
@@ -83,7 +83,7 @@ uv run ops-assist investigate "Why is payment slow?" --show-context
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` and `validate` start without a model; an A2A investigation still requires one. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md), [32 — AIDLC](ateliers/32-aidlc/README.md).
 
 ## Layout
 
@@ -91,6 +91,7 @@ French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 
 src/ops_assist/
   agent.py            agent, tools and expert topology
   config.py, models.py  profiles, two model tiers and fallback
+  fingerprint.py      behaviour build identifier
   report.py, triage.py  report validation and preliminary triage
   evaluation.py       incident evaluation and scoring
   cost.py             offline scripted cost comparison
@@ -108,6 +109,7 @@ src/ops_assist/
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
+BEHAVIOR_CHANGELOG.md behaviour changes and evaluation results
 ateliers/             French workshops, including cost estimation
 tests/                offline contract and integration tests
 ```
@@ -211,3 +213,7 @@ The offline workshop dataset command `python3 ateliers/24-lora/make_dataset.py` 
 The benchmark resolves `OPS_ASSIST_API_BASE`, then `OLLAMA_API_BASE`, then localhost; only loopback endpoints are allowed without `--allow-remote`. Prompt files are limited to 64 KiB. ROCm detection reports GPU memory as unknown when it cannot be measured. Fast cloud models require their provider credentials and configuration before calls.
 
 Cost scenarios mark a missing distinct fast tier as `n/a` (JSON `null` with a reason). Cache is simulated for direct Anthropic and automatic OpenAI/Gemini caching only; other providers include a note. Zero rates for hosted models are unknown; local Ollama is `$0 (local)`. Vertex model prices use LiteLLM’s local lookup.
+
+## Step 32 — AIDLC
+
+`ops-assist profile` displays the resolved configuration fingerprint; report envelopes and evaluation results retain it. See [workshop 32](ateliers/32-aidlc/README.md) and the behaviour changelog. No new configuration is required.

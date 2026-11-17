@@ -97,6 +97,10 @@ def test_independent_reports_against_each_key(incident, variant, passed):
 def test_scripted_models_evaluate_all_cases_and_persist(monkeypatch, tmp_path):
     monkeypatch.setenv("OPS_ASSIST_INCIDENTS_DIR", str(tmp_path / "other"))
     perfect, path = evaluate(load_settings(env={}), repeat=2, model=ScriptedEvaluation())
+    from ops_assist.fingerprint import fingerprint
+
+    assert perfect["fingerprint"] == fingerprint(load_settings({}))
+    assert json.loads(path.read_text())["fingerprint"] == perfect["fingerprint"]
     assert len(perfect["results"]) == 12 and perfect["pass_rate"] == 1
     assert json.loads(path.read_text()) == perfect
     assert all(r["report"] and r["error"] is None for r in perfect["results"])

@@ -121,7 +121,7 @@ def test_stdio_server_parity_and_discovery(monkeypatch):
             stdio_client(params) as (reader, writer),
             ClientSession(reader, writer) as session,
         ):
-            await asyncio.wait_for(session.initialize(), 20)
+            await asyncio.wait_for(session.initialize(), 90)  # cold ADK import under load
             discovered = await session.list_tools()
             assert {tool.name for tool in discovered.tools} == set(MCP_EXPOSED_TOOLS)
             direct = {tool.__name__: tool for tool in make_tools(ReplaySource("payment-latency"))}

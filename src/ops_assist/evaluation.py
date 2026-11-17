@@ -8,6 +8,7 @@ import time
 from dataclasses import replace
 
 from .evaluation_dataset import DATA, load_dataset
+from .fingerprint import fingerprint
 from .observability import ReplaySource
 from .report import IncidentReport, check_observation_support
 from .run import investigate
@@ -243,6 +244,7 @@ def _evaluate(settings, repeat, *, model=None, compare=False):
         total = totals[name]
         rows = total["rows"]
         result = {
+            "fingerprint": fingerprint(tier_settings),
             "dataset_version": dataset["version"],
             "dataset_checksum": dataset["checksum"],
             "profile": settings.profile,

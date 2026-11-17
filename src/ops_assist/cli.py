@@ -419,7 +419,10 @@ def main(argv: list[str] | None = None) -> int:
             if missing:
                 raise ValueError(f"Missing expert environment variable(s): {', '.join(missing)}")
         if args.command == "profile":
+            from .fingerprint import fingerprint
+
             print(settings.describe())
+            print(f"Fingerprint: {fingerprint(settings)}")
             for key in settings.requires_env:
                 status = "set" if os.environ.get(key, "").strip() else "missing"
                 print(f"{key}: {status}")
@@ -523,6 +526,7 @@ def main(argv: list[str] | None = None) -> int:
                 if os.environ.get("OPS_ASSIST_SOURCE", "replay") == "replay"
                 else None,
                 question=args.question,
+                settings=settings,
             )
             print(report.model_dump_json(indent=2))
             for call in trace:
