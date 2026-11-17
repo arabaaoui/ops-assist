@@ -60,7 +60,7 @@ Résultat attendu sur le corpus fourni, avec le hachage et les cinq premiers ré
 | vector | 0,575 | 0,675 |
 | bm25 | 0,783 | 1,000 |
 | hybrid | 0,758 | 0,795 |
-| hybrid+rerank | 0,783 | 0,817 |
+| hybrid+rerank | 0,783 | 0,808 |
 
 L'évaluation construit son index en mémoire avec le hachage, même si un autre fournisseur est configuré.
 Ces résultats mesurés décrivent seulement ce petit jeu ; ils ne prouvent pas une supériorité générale.

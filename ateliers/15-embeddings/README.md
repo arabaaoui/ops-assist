@@ -38,11 +38,11 @@ OPS_ASSIST_EMBEDDINGS=hash uv run ops-assist knowledge index
 3. Cherchez les sections proches d'une question :
 
 ```bash
-OPS_ASSIST_EMBEDDINGS=hash uv run ops-assist knowledge search "payment latency timeouts" -k 5
+OPS_ASSIST_RETRIEVAL=vector OPS_ASSIST_EMBEDDINGS=hash uv run ops-assist knowledge search "payment latency timeouts" -k 5
 ```
 
    Résultat attendu : cinq lignes avec score, identifiant `document#section` et titre.
-   La recherche compare toutes les sections ; `-k` accepte une valeur de 1 à 100.
+   La recherche vectorielle compare toutes les sections ; `-k` accepte une valeur de 1 à 100.
 
 4. Ouvrez les documents correspondant aux premiers résultats et vérifiez leur contexte.
    Le postmortem `payment-processor-incident` arrive en tête car son observation reprend
@@ -55,6 +55,8 @@ OPS_ASSIST_EMBEDDINGS=hash uv run ops-assist knowledge search "payment latency t
    Un index créé avec un autre identifiant d'embedder est refusé à la recherche.
    Une dimension différente est également refusée ; les scores ne sont pas comparables
    entre espaces de vecteurs différents.
+
+La recherche hybride, utilisée par défaut, sera présentée à l’atelier 17.
 
 ## Exercices
 
@@ -78,7 +80,7 @@ export OPS_ASSIST_EMBEDDINGS=ollama/nomic-embed-text
 export OPS_ASSIST_EMBEDDINGS_API_BASE=http://localhost:11434
 export OPS_ASSIST_INDEX_FILE=knowledge-nomic-index.json
 uv run ops-assist knowledge index
-uv run ops-assist knowledge search "payment latency" -k 5
+OPS_ASSIST_RETRIEVAL=vector uv run ops-assist knowledge search "payment latency" -k 5
 ```
 
 D'autres identifiants LiteLLM sont configurables, par exemple `gemini/text-embedding-004`,

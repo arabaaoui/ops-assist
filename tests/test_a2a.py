@@ -369,3 +369,27 @@ def test_oversized_remote_answer_is_rejected():
         assert events[-1].error_message == "remote A2A answer exceeds 64 KiB"
 
     asyncio.run(run())
+
+
+def test_remote_knowledge_only_root_cause_is_rejected():
+    output = json.dumps(
+        {
+            "summary": "A cause",
+            "status": "root_cause_identified",
+            "facts": [{"statement": "Known issue", "source": "runbook:payment#1"}],
+            "hypotheses": [{"statement": "Cause", "confidence": 0.9, "supporting_facts": [0]}],
+        }
+    )
+
+    async def run():
+        remote = Agent(name="fake", model=GarbageModel(output=output), description="Fake remote")
+        app = create_app(agent=remote)
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as client:
+                events = await _run_oncall(
+                    build_oncall("http://127.0.0.1:8000/.well-known/agent-card.json", client)
+                )
+        assert "observation support" in events[-1].error_message
+        assert output not in events[-1].model_dump_json()
+
+    asyncio.run(run())

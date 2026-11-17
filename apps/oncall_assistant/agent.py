@@ -19,7 +19,7 @@ from google.adk.events import Event
 from google.genai import types
 from pydantic import ValidationError
 
-from ops_assist.report import IncidentReport
+from ops_assist.report import IncidentReport, check_observation_support
 
 MAX_ANSWER_BYTES = 64 * 1024
 
@@ -68,6 +68,7 @@ class OnCallAssistant(BaseAgent):
                     "remote agent returned an invalid report: "
                     f"{exc.error_count()} validation error(s)"
                 ) from exc
+            check_observation_support(report)
             yield Event(
                 author=self.name,
                 invocation_id=ctx.invocation_id,

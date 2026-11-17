@@ -37,7 +37,7 @@ def evaluate() -> dict[str, tuple[float, float]]:
         .joinpath("data/knowledge/eval/questions.yaml")
         .read_text(encoding="utf-8")
     )
-    index = VectorIndex.build(HashEmbedder())
+    index = VectorIndex.build(HashEmbedder(), include_approved=False)
     identifiers = {chunk["id"] for chunk in index.chunks}
     if any(not set(case["expected"]) <= identifiers for case in cases):
         raise ValueError("evaluation references unknown chunk IDs")

@@ -199,3 +199,21 @@ def test_evaluation_annotations():
         "cache-incident#1",
         "cache-incident#2",
     }
+
+
+def test_evaluation_ignores_approved_documents():
+    before = evaluate()
+    store = StateStore()
+    store.write_knowledge(
+        "approved",
+        "extra.md",
+        "---\nid: extra\ntitle: Extra\nservice: payment\nupdated: 2026-01-01\n"
+        "owner: reviewer\n---\n# database connection leak payment latency timeouts\n"
+        "database connection leak payment latency timeouts\n",
+    )
+    assert any(c["id"].startswith("extra#") for c in VectorIndex.build(HashEmbedder()).chunks)
+    assert not any(
+        c["id"].startswith("extra#")
+        for c in VectorIndex.build(HashEmbedder(), include_approved=False).chunks
+    )
+    assert evaluate() == before

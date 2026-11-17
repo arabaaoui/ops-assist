@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from .config import PROFILES_FILE, _load_profiles, load_settings
 from .memory import forget, list_memories
 from .observability import ObservationError, ReplaySource
-from .report import IncidentReport
+from .report import IncidentReport, check_observation_support
 from .run import investigate
 from .triage import pretriage
 
@@ -81,7 +81,8 @@ def main(argv: list[str] | None = None) -> int:
             serve()
             return 0
         if args.command == "validate":
-            IncidentReport.model_validate_json(args.file.read_text(encoding="utf-8"))
+            report = IncidentReport.model_validate_json(args.file.read_text(encoding="utf-8"))
+            check_observation_support(report)
             print("OK")
             return 0
         if args.command == "profile" and args.list:

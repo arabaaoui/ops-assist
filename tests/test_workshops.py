@@ -189,7 +189,7 @@ def test_offline_workshop_python_oneliners():
     import sys
 
     commands = []
-    for readme in sorted((ROOT / "ateliers").glob("[0-1][0-9]-*/README.md")):
+    for readme in sorted((ROOT / "ateliers").glob("[0-9][0-9]-*/README.md")):
         for block in re.findall(r"```(?:bash|sh)\n(.*?)```", readme.read_text(), re.S):
             commands.extend(line for line in block.splitlines() if "uv run python -c " in line)
     assert len(commands) == 3
@@ -213,3 +213,53 @@ def test_env_example_documents_all_source_variables():
         variables.update(re.findall(r"OPS_ASSIST_[A-Z][A-Z0-9_]+", path.read_text()))
     documented = set(re.findall(r"OPS_ASSIST_[A-Z][A-Z0-9_]+", (ROOT / ".env.example").read_text()))
     assert variables <= documented
+
+
+def test_workshop_17_evaluation_table_matches_cli(capsys):
+    import re
+
+    assert cli.main(["knowledge", "eval"]) == 0
+    output = capsys.readouterr().out
+    scores = dict(
+        (name, (recall, mrr))
+        for name, recall, mrr in re.findall(
+            r"^(\S+): recall@5=(\d+\.\d+) MRR@5=(\d+\.\d+)$", output, re.M
+        )
+    )
+    readme = (ROOT / "ateliers/17-variantes-rag/README.md").read_text()
+    table = dict(
+        (name, (recall.replace(",", "."), mrr.replace(",", ".")))
+        for name, recall, mrr in re.findall(
+            r"^\| (vector|bm25|hybrid|hybrid\+rerank) \| (\d+,\d+) \| (\d+,\d+) \|$",
+            readme,
+            re.M,
+        )
+    )
+    assert len(scores) == len(table) == 4
+    assert table == scores
+
+
+def test_validate_rejects_knowledge_only_root_cause(tmp_path, capsys):
+    report = {
+        "summary": "A cause",
+        "status": "root_cause_identified",
+        "facts": [{"statement": "Known issue", "source": "runbook:payment#1"}],
+        "hypotheses": [{"statement": "Cause", "confidence": 0.9, "supporting_facts": [0]}],
+    }
+    path = tmp_path / "report.json"
+    path.write_text(json.dumps(report))
+    assert cli.main(["validate", str(path)]) == 1
+    assert "observation support" in capsys.readouterr().err
+    report["facts"][0]["source"] = "logs/payment"
+    path.write_text(json.dumps(report))
+    assert cli.main(["validate", str(path)]) == 0
+
+
+def test_workshop_15_search_commands_use_vector_retrieval():
+    readme = (ROOT / "ateliers/15-embeddings/README.md").read_text()
+    commands = [
+        line for line in readme.splitlines() if "uv run ops-assist knowledge search" in line
+    ]
+    assert commands
+    assert all("OPS_ASSIST_RETRIEVAL=vector" in command for command in commands)
+    assert "atelier 17" in readme and "hybride" in readme

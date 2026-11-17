@@ -31,7 +31,7 @@ def parse_document(text: str, name: str) -> dict:
     }
 
 
-def load_documents() -> list[dict]:
+def load_documents(*, include_approved: bool = True) -> list[dict]:
     """Load packaged and human-approved local documents, never drafts."""
     packaged = files("ops_assist").joinpath("data/knowledge")
     paths = [
@@ -42,12 +42,13 @@ def load_documents() -> list[dict]:
     ]
     documents, seen = [], set()
     sources = [(path.name, path.read_text(encoding="utf-8")) for path in paths]
-    store = StateStore()
-    sources.extend(
-        (name, store.read_knowledge("approved", name))
-        for name in store.list_knowledge("approved")
-        if name.endswith(".md")
-    )
+    if include_approved:
+        store = StateStore()
+        sources.extend(
+            (name, store.read_knowledge("approved", name))
+            for name in store.list_knowledge("approved")
+            if name.endswith(".md")
+        )
     for name, text in sources:
         doc = parse_document(text, name)
         if doc["id"] in seen:
@@ -98,9 +99,15 @@ class VectorIndex:
         self.vectors = [normalize(v) for v in vectors]
 
     @classmethod
-    def build(cls, embedder: Embedder, previous: "VectorIndex | None" = None) -> "VectorIndex":
+    def build(
+        cls,
+        embedder: Embedder,
+        previous: "VectorIndex | None" = None,
+        *,
+        include_approved: bool = True,
+    ) -> "VectorIndex":
         """Load, chunk, embed changed documents and assemble the index."""
-        docs = load_documents()
+        docs = load_documents(include_approved=include_approved)
         old_manifest = (
             {d["id"]: d for d in previous.manifest}
             if previous and previous.embedder.id == embedder.id

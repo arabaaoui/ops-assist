@@ -26,7 +26,7 @@ class CountingEmbedder(HashEmbedder):
 
 def test_incremental_ingestion(monkeypatch):
     documents = knowledge.load_documents()
-    monkeypatch.setattr(knowledge, "load_documents", lambda: documents)
+    monkeypatch.setattr(knowledge, "load_documents", lambda **kwargs: documents)
     embedder = CountingEmbedder()
     first = knowledge.VectorIndex.build(embedder)
     assert len(embedder.calls) == len(documents)
@@ -36,7 +36,7 @@ def test_incremental_ingestion(monkeypatch):
     second = knowledge.VectorIndex.build(embedder, previous)
     assert not embedder.calls and second.vectors == previous.vectors
     changed = dict(documents[0], body=documents[0]["body"] + "\nnew content", checksum="changed")
-    monkeypatch.setattr(knowledge, "load_documents", lambda: [changed, *documents[1:-1]])
+    monkeypatch.setattr(knowledge, "load_documents", lambda **kwargs: [changed, *documents[1:-1]])
     third = knowledge.VectorIndex.build(embedder, second)
     assert len(embedder.calls) == 1
     assert len(embedder.calls[0]) == third.manifest[0]["chunk_count"]
@@ -118,7 +118,7 @@ def test_index_unavailable_flags_citations():
 
 def test_changed_embedding_space_reembeds_all(monkeypatch):
     docs = knowledge.load_documents()[:2]
-    monkeypatch.setattr(knowledge, "load_documents", lambda: docs)
+    monkeypatch.setattr(knowledge, "load_documents", lambda **kwargs: docs)
     old = knowledge.VectorIndex.build(HashEmbedder())
     new = CountingEmbedder()
     new.id = "different-space"
@@ -219,7 +219,7 @@ def test_empty_corpus_replaces_old_index_without_embedding(monkeypatch, capsys):
 
     old = knowledge.VectorIndex.build(HashEmbedder())
     old.save(StateStore())
-    monkeypatch.setattr(knowledge, "load_documents", lambda: [])
+    monkeypatch.setattr(knowledge, "load_documents", lambda **kwargs: [])
     assert cli.main(["knowledge", "index"]) == 0
     assert "Indexed 0 chunks" in capsys.readouterr().out
     embedder = CountingEmbedder()
