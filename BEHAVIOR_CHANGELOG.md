@@ -2,6 +2,10 @@
 
 Entries describe versioned behaviour changes; historical evaluation results are only stated when recorded.
 
+## 2026-11-17 — fingerprint 086fcc619aca2524
+
+Change: the fingerprint now also covers the topology (`OPS_ASSIST_TOPOLOGY`) and `agent.py`, where the expert and delegation instructions live. Why: switching to experts, or editing their instructions, changed behaviour without changing the fingerprint. Evaluation: offline regression suite; no live model evaluation claimed.
+
 ## 2026-11-17 — fingerprint 42d79c521b4b503a
 
 Change: identify the current default profile, prompts, skills, schema, scorer and dataset together. Why: make behavioural builds traceable. Evaluation: offline regression suite (see CI); no live model evaluation claimed.

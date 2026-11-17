@@ -17,10 +17,9 @@ def test_ci_gates_and_publication():
     assert workflow["permissions"] == {"contents": "read"}
     jobs = workflow["jobs"]
     gates = {"lint", "tests", "contract-tests", "offline-evals", "redteam"}
-    assert set(jobs) == gates | {"image"}
+    assert set(jobs) == gates | {"image", "publish"}
     image = jobs["image"]
     assert set(image["needs"]) == gates
-    assert image["permissions"] == {"contents": "read", "packages": "write", "id-token": "write"}
     assert all("permissions" not in jobs[name] for name in gates)
     for job in jobs.values():
         for step in job["steps"]:
@@ -35,14 +34,23 @@ def test_ci_gates_and_publication():
     scan = next(s for s in jobs["tests"]["steps"] if "pytest -q" in s.get("run", ""))
     assert scan["env"]["FORBIDDEN_TERMS"] == "${{ secrets.FORBIDDEN_TERMS }}"
     assert "github.event_name" in scan["env"]["REQUIRE_FORBIDDEN_TERMS"]
-    steps = image["steps"]
+    # The build check holds no write permission; only the tag-gated publish job does.
+    assert image["permissions"] == {"contents": "read"}
+    check = next(s for s in image["steps"] if "build-push-action@" in s.get("uses", ""))
+    assert check["with"]["push"] is False
+    publish = jobs["publish"]
+    assert publish["if"] == "startsWith(github.ref, 'refs/tags/v')"
+    assert publish["needs"] == ["image"]
+    assert publish["permissions"] == {
+        "contents": "read",
+        "packages": "write",
+        "id-token": "write",
+    }
+    steps = publish["steps"]
     build = next(s for s in steps if s.get("id") == "build")
-    tag_condition = "startsWith(github.ref, 'refs/tags/v')"
-    assert build["with"]["push"] == "${{ " + tag_condition + " }}"
-    for fragment in ("docker/login-action@", "sigstore/cosign-installer@"):
-        assert next(s for s in steps if fragment in s.get("uses", ""))["if"] == tag_condition
+    assert build["with"]["push"] is True
     sign = next(s for s in steps if "cosign sign" in s.get("run", ""))
-    assert sign["if"] == tag_condition and "${IMAGE}@${DIGEST}" in sign["run"]
+    assert "${IMAGE}@${DIGEST}" in sign["run"]
     assert sign["env"]["DIGEST"] == "${{ steps.build.outputs.digest }}"
 
 

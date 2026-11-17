@@ -150,6 +150,19 @@ def test_environment_endpoint_guard(monkeypatch):
         benchmark(settings, "x", 1, completion=completion)
 
 
+def test_hosted_model_never_gets_the_ollama_endpoint(monkeypatch):
+    settings = replace(load_settings(env={}), models=["openai/gpt-4o-mini"], api_base=None)
+    calls = []
+
+    def completion(**kwargs):
+        calls.append(kwargs)
+        return iter([chunk("ok")])
+
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://localhost:11434")
+    benchmark(settings, "x", 1, completion=completion, allow_remote=True)
+    assert "api_base" not in calls[-1]
+
+
 def test_prompt_file_size_before_decoding(tmp_path, capsys):
     path = tmp_path / "large"
     path.write_bytes(b"\xff" * 65537)

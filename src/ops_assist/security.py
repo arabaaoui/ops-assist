@@ -360,6 +360,24 @@ class StateStore:
         return str(self.root / name)
 
 
+def tool_outcome(tool_name: str, response: Any) -> str:
+    """Classify a tool response as ok, denied or failed; shared by the audit and the traces.
+
+    A rollback awaiting or refused human confirmation is a denial, not a failure.
+    """
+    error = response.get("error") if isinstance(response, dict) else None
+    status = response.get("status") if isinstance(response, dict) else None
+    if status == "denied" or (
+        error
+        and tool_name == "rollback_deployment"
+        and ("confirm" in str(error) or "rejected" in str(error))
+    ):
+        return "denied"
+    if error or status in ("error", "failed"):
+        return "failed"
+    return "ok"
+
+
 class SecurityBoundary:
     """Shared ADK callbacks for the coordinator and all experts."""
 
@@ -443,21 +461,7 @@ class SecurityBoundary:
             self.audit_failures.remove(id(tool_context))
             return None
         started = self.starts.pop(id(tool_context), time.monotonic())
-        error = tool_response.get("error") if isinstance(tool_response, dict) else None
-        status = tool_response.get("status") if isinstance(tool_response, dict) else None
-        outcome = (
-            "denied"
-            if status == "denied"
-            or (
-                error
-                and tool.name == "rollback_deployment"
-                and ("confirm" in str(error) or "rejected" in str(error))
-            )
-            else "failed"
-            if error or status in ("error", "failed")
-            else "ok"
-        )
-        self.audit(tool.name, args, outcome, started)
+        self.audit(tool.name, args, tool_outcome(tool.name, tool_response), started)
         return None
 
     def error(self, tool, args, tool_context, error):

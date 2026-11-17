@@ -447,3 +447,15 @@ def test_anchored_directory_survives_path_replacement(monkeypatch, tmp_path):
         == "v2.13"
     )
     assert not (root / "incident-state.json").exists()
+
+
+def test_tool_outcome_is_shared_by_audit_and_traces():
+    from ops_assist.security import tool_outcome
+
+    pending = {"error": "This tool call requires confirmation, please approve or reject."}
+    assert tool_outcome("rollback_deployment", pending) == "denied"
+    assert tool_outcome("rollback_deployment", {"error": "This tool call is rejected."}) == "denied"
+    assert tool_outcome("get_logs", pending) == "failed"
+    assert tool_outcome("get_logs", {"status": "denied"}) == "denied"
+    assert tool_outcome("get_logs", {"status": "error"}) == "failed"
+    assert tool_outcome("get_logs", {"lines": []}) == "ok"

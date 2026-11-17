@@ -22,7 +22,7 @@ from .config import Settings, load_settings
 from .memory import SECRET, remember
 from .observability import ObservationSource, source_from_env
 from .report import CHUNK_ID, IncidentReport, check_observation_support, knowledge_citations
-from .security import TOOL_ACCESS, _redact
+from .security import TOOL_ACCESS, _redact, tool_outcome
 from .triage import pretriage
 
 logger = logging.getLogger(__name__)
@@ -239,13 +239,9 @@ def _investigate(
             return result
 
         def on_after(tool, args, tool_context, tool_response):
-            outcome = "ok"
-            if isinstance(tool_response, dict):
-                status = tool_response.get("status")
-                if status == "denied":
-                    outcome = "denied"
-                elif status in ("error", "failed") or tool_response.get("error"):
-                    outcome = "error"
+            # Spans name a failure "error"; denials match the audit exactly.
+            outcome = tool_outcome(tool.name, tool_response)
+            outcome = "error" if outcome == "failed" else outcome
             try:
                 return after(tool, args, tool_context, tool_response)
             finally:

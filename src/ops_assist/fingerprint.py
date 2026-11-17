@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from .config import Settings
@@ -13,13 +14,18 @@ PACKAGE = Path(__file__).resolve().parent
 SCORER_VERSION = "1"
 
 
-def fingerprint(settings: Settings) -> str:
-    """Hash canonical behaviour inputs, excluding credentials and endpoint values."""
+def fingerprint(settings: Settings, topology: str | None = None) -> str:
+    """Hash canonical behaviour inputs, excluding credentials and endpoint values.
+
+    Expert and delegation instructions live in agent.py, so its source is hashed too.
+    """
     files = sorted((PACKAGE / "prompts").rglob("*.md")) + sorted(
         (PACKAGE / "skills").rglob("SKILL.md")
     )
+    files.append(PACKAGE / "agent.py")
     inputs = {
         "files": {str(p.relative_to(PACKAGE)): p.read_text(encoding="utf-8") for p in files},
+        "topology": topology or os.environ.get("OPS_ASSIST_TOPOLOGY", "single"),
         "profile": settings.profile,
         "models": settings.models,
         "fast_models": settings.fast_models or settings.models,

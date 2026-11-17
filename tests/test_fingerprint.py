@@ -19,11 +19,18 @@ def test_stable_and_each_input_changes(monkeypatch, tmp_path):
     skill = package / "skills" / "example" / "SKILL.md"
     prompt.write_text("prompt")
     skill.write_text("skill")
+    agent = package / "agent.py"
+    agent.write_text("EXPERT_INSTRUCTION = 'x'")
     monkeypatch.setattr(fp, "PACKAGE", package)
+    monkeypatch.delenv("OPS_ASSIST_TOPOLOGY", raising=False)
     settings = load_settings({})
     original = fp.fingerprint(settings)
     assert fp.fingerprint(settings) == original
-    for path in (prompt, skill):
+    assert fp.fingerprint(settings, topology="experts") != original
+    monkeypatch.setenv("OPS_ASSIST_TOPOLOGY", "experts")
+    assert fp.fingerprint(settings) != original
+    monkeypatch.delenv("OPS_ASSIST_TOPOLOGY")
+    for path in (prompt, skill, agent):
         old = path.read_text()
         path.write_text(old + " changed")
         assert fp.fingerprint(settings) != original
