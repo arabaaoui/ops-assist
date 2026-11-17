@@ -51,10 +51,24 @@ def is_stale(updated: str) -> bool:
     return freshness(updated)["stale"]
 
 
-def save_report(report: IncidentReport, session: str) -> None:
+def save_report(
+    report: IncidentReport,
+    session: str,
+    *,
+    incident_id: str | None = None,
+    question: str | None = None,
+) -> None:
     """Atomically store the final validated report for later drafting."""
     store = StateStore()
-    payload = json.dumps({"session": session, "report": report.model_dump()}, ensure_ascii=False)
+    payload = json.dumps(
+        {
+            "session": session,
+            "report": report.model_dump(),
+            "incident_id": incident_id,
+            "question": question,
+        },
+        ensure_ascii=False,
+    )
     name = hashlib.sha256(session.encode()).hexdigest()
     for filename in (f"{name}.json", "last.json"):
         store.write_knowledge("reports", filename, payload, replace=True)

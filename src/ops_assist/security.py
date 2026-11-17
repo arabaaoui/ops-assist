@@ -149,7 +149,7 @@ class StateStore:
     @contextmanager
     def knowledge_directory(self, section: str, *, create: bool = False):
         """Open private knowledge directories relative to the validated state root."""
-        if section not in {"reports", "drafts", "approved"}:
+        if section not in {"reports", "drafts", "approved", "feedback"}:
             raise ValueError("invalid knowledge directory")
         parent = os.dup(self.directory())
         try:

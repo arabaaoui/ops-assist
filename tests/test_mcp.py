@@ -205,7 +205,7 @@ def test_server_stdout_contains_only_json_rpc(monkeypatch):
         input=json.dumps(request) + "\n",
         capture_output=True,
         text=True,
-        timeout=20,
+        timeout=90,  # cold ADK import can exceed 20 s on a loaded machine
         check=True,
     )
     assert "Starting ops-assist MCP server" in result.stderr

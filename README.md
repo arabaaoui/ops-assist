@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 25.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 26.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
@@ -65,6 +65,8 @@ uv run ops-assist knowledge search "payment latency" -k 5
 uv run ops-assist knowledge eval
 uv run ops-assist knowledge draft-postmortem --report report.json
 uv run ops-assist knowledge approve postmortem-ID
+uv run ops-assist feedback --report last --up --comment "Useful"
+uv run ops-assist feedback export --pairs
 uv run ops-assist knowledge stale
 uv run ops-assist validate examples/reports/valid.json
 uv run ops-assist ask "What is latency?"
@@ -73,7 +75,7 @@ uv run ops-assist investigate "Why is payment slow?" --show-context
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` and `validate` start without a model; an A2A investigation still requires one. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md).
 
 ## Layout
 
@@ -85,6 +87,7 @@ src/ops_assist/
   evaluation.py       incident evaluation and scoring
   tools.py, executor.py  tools and bounded execution
   security.py         permissions, confirmation and audit
+  feedback.py         private feedback and offline preference pairs
   memory.py           incident summaries
   mcp_server.py, a2a_server.py  protocol servers
   observability/      replay, Prometheus and Loki sources
@@ -171,3 +174,5 @@ Compare profiles with `ops-assist eval run`; the literal score and its limitatio
 The offline workshop dataset command `python3 ateliers/24-lora/make_dataset.py` prints fictional train/test JSON; see [workshop 24](ateliers/24-lora/README.md). It adds no ops-assist CLI command.
 
 `OPS_ASSIST_FAST_MODELS` selects the expert fallback chain; it defaults to the main chain. `eval run --compare-tiers` compares experts on both tiers with the same coordinator, reporting pass rate, token usage and elapsed time. Unknown measurements are counted separately; failed calls may leave token totals incomplete. Evaluation requires in-process tools. Sampling variance remains even with a fixed seed. See [workshop 25](ateliers/25-distillation/README.md).
+
+`feedback --report <file|last> --up|--down [--comment TEXT]` saves private feedback under `OPS_ASSIST_STATE_DIR`; `feedback export --pairs` prints offline JSONL. Pairs require distinct reports, the same known incident and question, and opposite net ratings: votes are summed per report, and a report with as many up as down votes is contested and left out, so a pair is never exported in both directions. The incident and question in an explicit file are trusted as given. Explicit files may wrap `report`, `incident_id` and `question`; plain reports have no pairing metadata. Redaction is heuristic and no training occurs. See [workshop 26](ateliers/26-renforcement/README.md).

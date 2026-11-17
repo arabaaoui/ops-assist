@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 25.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 26.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -65,6 +65,8 @@ uv run ops-assist knowledge search "payment latency" -k 5
 uv run ops-assist knowledge eval
 uv run ops-assist knowledge draft-postmortem --report report.json
 uv run ops-assist knowledge approve postmortem-ID
+uv run ops-assist feedback --report last --up --comment "Useful"
+uv run ops-assist feedback export --pairs
 uv run ops-assist knowledge stale
 uv run ops-assist validate examples/reports/valid.json
 uv run ops-assist ask "Qu'est-ce que la latence ?"
@@ -73,7 +75,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?" --show-contex
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md).
 
 ## Organisation
 
@@ -85,6 +87,7 @@ src/ops_assist/
   evaluation.py       incident evaluation and scoring
   tools.py, executor.py  tools and bounded execution
   security.py         permissions, confirmation and audit
+  feedback.py         private feedback and offline preference pairs
   memory.py           incident summaries
   mcp_server.py, a2a_server.py  protocol servers
   observability/      replay, Prometheus and Loki sources
@@ -171,3 +174,5 @@ Comparez les profils avec `ops-assist eval run` ; le score littéral et ses limi
 La commande hors ligne `python3 ateliers/24-lora/make_dataset.py` affiche le jeu fictif train/test en JSON ; voir l’[atelier 24](ateliers/24-lora/README.md). Elle n’ajoute aucune commande à la CLI ops-assist.
 
 `OPS_ASSIST_FAST_MODELS` choisit la chaîne de repli des experts ; elle reprend par défaut la chaîne principale. `eval run --compare-tiers` compare les deux niveaux avec le même coordinateur : réussite, jetons et durée. Les mesures inconnues sont comptées à part ; les appels échoués peuvent rendre le total incomplet. L’évaluation exige les outils en processus. Une variance d’échantillonnage subsiste malgré la graine fixe. Voir l’[atelier 25](ateliers/25-distillation/README.md).
+
+`feedback --report <fichier|last> --up|--down [--comment TEXTE]` conserve les retours privés dans `OPS_ASSIST_STATE_DIR` ; `feedback export --pairs` affiche du JSONL hors ligne. Une paire exige deux rapports distincts, le même incident et la même question connus, et des notes nettes opposées : les votes d’un rapport s’additionnent, un rapport qui a autant de votes pour que contre est contesté et ne sert dans aucune paire, si bien qu’une paire n’est jamais exportée dans les deux sens. L’incident et la question d’un fichier fourni sont pris tels quels. Un fichier peut contenir `report`, `incident_id` et `question` ; un rapport seul ne fournit pas ces métadonnées. L’expurgation est heuristique et aucun entraînement n’est effectué. Voir l’[atelier 26](ateliers/26-renforcement/README.md).

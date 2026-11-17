@@ -54,6 +54,14 @@ def main(argv: list[str] | None = None) -> int:
     memory_list.add_argument("--service")
     memory_forget = memory_commands.add_parser("forget")
     memory_forget.add_argument("--service", required=True)
+    feedback = commands.add_parser("feedback")
+    feedback.add_argument("action", nargs="?", choices=["export"])
+    feedback.add_argument("--report")
+    rating = feedback.add_mutually_exclusive_group()
+    rating.add_argument("--up", action="store_true")
+    rating.add_argument("--down", action="store_true")
+    feedback.add_argument("--comment", default="")
+    feedback.add_argument("--pairs", action="store_true")
     knowledge = commands.add_parser("knowledge")
     knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
     knowledge_commands.add_parser("index")
@@ -78,6 +86,20 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "feedback":
+            from .feedback import collect, pairs
+
+            if args.action == "export":
+                if not args.pairs or args.report or args.up or args.down or args.comment:
+                    raise ValueError("export requires only --pairs")
+                for pair in pairs():
+                    print(json.dumps(pair, ensure_ascii=False))
+            else:
+                if not args.report or args.up == args.down or args.pairs:
+                    raise ValueError("feedback requires --report and exactly one of --up or --down")
+                collect(args.report, "up" if args.up else "down", args.comment)
+                print("Feedback saved")
+            return 0
         if args.command == "eval":
             from .evaluation_dataset import load_dataset
 
@@ -358,7 +380,14 @@ def main(argv: list[str] | None = None) -> int:
             report, trace = investigate(args.question, settings=settings, **kwargs)
             from .knowledge.living import save_report
 
-            save_report(report, trace.session_id)
+            save_report(
+                report,
+                trace.session_id,
+                incident_id=settings.incident
+                if os.environ.get("OPS_ASSIST_SOURCE", "replay") == "replay"
+                else None,
+                question=args.question,
+            )
             print(report.model_dump_json(indent=2))
             for call in trace:
                 suffix = (
