@@ -35,8 +35,9 @@ def main(argv: list[str] | None = None) -> int:
     eval_run.add_argument("--repeat", type=int, default=1)
     eval_run.add_argument("--show-reports", action="store_true")
     eval_run.add_argument("--compare-tiers", action="store_true")
-    doctor = commands.add_parser("doctor", help="inspect local hardware offline")
+    doctor = commands.add_parser("doctor", help="inspect local hardware")
     doctor.add_argument("--json", action="store_true")
+    doctor.add_argument("--ollama", action="store_true", help="probe local Ollama")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -91,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "doctor":
             from .doctor import diagnose
 
-            result = diagnose()
+            result = diagnose(ollama=args.ollama)
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
             else:
@@ -104,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
                     f"GPU: {result['gpu']['name']}; total bytes: {result['gpu']['total_bytes']}; "
                     f"free bytes: {result['gpu']['free_bytes']}"
                 )
+                print(
+                    f"Accelerator: {result['accelerator']['backend']}; "
+                    f"driver: {result['accelerator']['version']}"
+                )
+                if args.ollama:
+                    print(f"Ollama: {json.dumps(result['ollama'], ensure_ascii=False)}")
                 print(
                     f"Recommended profile: {result['advice']['profile']} — "
                     f"{result['advice']['reason']}"

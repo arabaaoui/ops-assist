@@ -1,7 +1,10 @@
 """Offline hardware probes and conservative profile advice."""
 
+import http.client
+import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,6 +36,21 @@ class Probes:
     def run(self, args):
         """Run a bounded local hardware query."""
         return subprocess.run(args, capture_output=True, text=True, check=True, timeout=2).stdout
+
+    def ollama(self):
+        """Read a bounded response from the fixed loopback endpoint."""
+        connection = http.client.HTTPConnection("127.0.0.1", 11434, timeout=2)
+        try:
+            connection.request("GET", "/api/ps")
+            response = connection.getresponse()
+            if response.status != 200:
+                raise ValueError(f"HTTP {response.status}")
+            data = response.read(65537)
+            if len(data) > 65536:
+                raise ValueError("response too large")
+            return json.loads(data)
+        finally:
+            connection.close()
 
 
 def _probe(fn):
@@ -100,7 +118,49 @@ def _gpu(probes, system, machine):
     }
 
 
-def diagnose(probes=None):
+def _accelerator(probes, system, machine):
+    if system == "Darwin" and machine.lower() in ("arm64", "aarch64"):
+        return {"backend": "Metal", "version": "unknown"}
+    nvidia = probes.which("nvidia-smi")
+    if nvidia:
+        output = probes.run([nvidia, "--query-gpu=driver_version", "--format=csv,noheader"])
+        versions = output.strip().splitlines()
+        if not versions or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", versions[0].strip()):
+            raise ValueError("invalid NVIDIA driver version")
+        return {"backend": "CUDA", "version": versions[0].strip()[:100]}
+    rocm = probes.which("rocm-smi")
+    if rocm:
+        output = probes.run([rocm, "--showdriverversion"])
+        match = re.search(r"Driver version:\s*([^\s]+)", output, re.IGNORECASE)
+        if not match:
+            raise ValueError("invalid ROCm driver output")
+        return {"backend": "ROCm", "version": match.group(1)[:100]}
+    return {"backend": "none", "version": "unknown"}
+
+
+def _ollama_models(probes):
+    data = probes.ollama()
+    models = data["models"]
+    if not isinstance(models, list) or len(models) > 100:
+        raise ValueError("invalid model list")
+    result = []
+    for model in models:
+        name, size, vram = model["name"], model["size"], model["size_vram"]
+        if (
+            not isinstance(name, str)
+            or not name
+            or type(size) is not int
+            or type(vram) is not int
+            or size <= 0
+            or not 0 <= vram <= size
+        ):
+            raise ValueError("invalid model data")
+        device = "CPU" if vram == 0 else "GPU" if vram == size else "CPU/GPU"
+        result.append({"name": name[:200], "device": device, "size": size, "size_vram": vram})
+    return result
+
+
+def diagnose(probes=None, *, ollama=False):
     """Return bounded hardware information and advice; probe failures become unknown."""
     probes = probes or Probes()
     platform_info = _probe(probes.system)
@@ -122,6 +182,10 @@ def diagnose(probes=None):
     gpu = _probe(lambda: _gpu(probes, system, machine))
     if isinstance(gpu, str):
         gpu = {"status": "unknown", "name": gpu, "total_bytes": None, "free_bytes": None}
+    accelerator = _probe(lambda: _accelerator(probes, system, machine))
+    if isinstance(accelerator, str):
+        accelerator = {"backend": "unknown", "version": accelerator}
+    ollama_result = _probe(lambda: _ollama_models(probes)) if ollama else "disabled"
     # 7B at 0.6 GB/B plus 2 GB for runtime and context, in decimal bytes.
     required = 6_200_000_000
     memory = gpu["free_bytes"] if gpu["status"] == "gpu" else available
@@ -148,5 +212,7 @@ def diagnose(probes=None):
         "cpu": {"count": count, "model": model},
         "ram": {"total_bytes": total, "available_bytes": available},
         "gpu": gpu,
+        "accelerator": accelerator,
+        "ollama": ollama_result,
         "advice": {"profile": "local" if fits else "api", "reason": reason},
     }

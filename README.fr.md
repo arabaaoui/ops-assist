@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 27.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 28.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : presque chaque
 chapitre lui ajoute une capacité, étiquetée `etape-NN`. Les chapitres 1 à 4 correspondent aux étapes 1 à 4 ; le
@@ -77,7 +77,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?" --show-contex
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md).
 
 ## Organisation
 
@@ -89,7 +89,7 @@ src/ops_assist/
   evaluation.py       incident evaluation and scoring
   tools.py, executor.py  tools and bounded execution
   security.py         permissions, confirmation and audit
-  doctor.py           diagnostic matériel et conseil de profil hors ligne
+  doctor.py           matériel, accélérateur et sonde Ollama locale facultative
   feedback.py         private feedback and offline preference pairs
   memory.py           incident summaries
   mcp_server.py, a2a_server.py  protocol servers
@@ -100,7 +100,7 @@ src/ops_assist/
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
-ateliers/             ateliers en français, dont les niveaux de modèles et les données LoRA hors ligne
+ateliers/             ateliers en français, dont le matériel et les piles d’accélérateurs
 tests/                offline contract and integration tests
 ```
 
@@ -181,3 +181,7 @@ La commande hors ligne `python3 ateliers/24-lora/make_dataset.py` affiche le jeu
 `feedback --report <fichier|last> --up|--down [--comment TEXTE]` conserve les retours privés dans `OPS_ASSIST_STATE_DIR` ; `feedback export --pairs` affiche du JSONL hors ligne. Une paire exige deux rapports distincts, le même incident et la même question connus, et des notes nettes opposées : les votes d’un rapport s’additionnent, un rapport qui a autant de votes pour que contre est contesté et ne sert dans aucune paire, si bien qu’une paire n’est jamais exportée dans les deux sens. L’incident et la question d’un fichier fourni sont pris tels quels. Un fichier peut contenir `report`, `incident_id` et `question` ; un rapport seul ne fournit pas ces métadonnées. L’expurgation est heuristique et aucun entraînement n’est effectué. Voir l’[atelier 26](ateliers/26-renforcement/README.md).
 
 `ops-assist doctor [--json]` inspecte le matériel hors ligne et conseille un profil sans modifier la configuration. Pour 7 milliards de paramètres, l’estimation retient 0,6 Go par milliard de poids en 4 bits et 2 Go de marge, comparés à la mémoire GPU libre ou la RAM disponible. Une mesure absente conduit à un conseil prudent ; la détection GPU est limitée. Voir l’[atelier 27](ateliers/27-materiel/README.md).
+
+## Étape 28 — pile des accélérateurs
+
+`ops-assist doctor --ollama` consulte facultativement le serveur local sur `127.0.0.1:11434` et affiche le placement CPU/GPU des modèles chargés. Sans cette option, aucun service n’est contacté. Le diagnostic détecte également le pilote CUDA, ROCm ou Metal selon les outils disponibles ; cette détection ne garantit pas une pile complète. Voir l’[atelier 28](ateliers/28-cuda/README.md).

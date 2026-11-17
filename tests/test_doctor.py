@@ -28,13 +28,14 @@ class Fake(Probes):
         return "MemTotal: 16000000 kB\nMemAvailable: 8000000 kB\n"
 
     def which(self, name):
-        assert name == "nvidia-smi"
-        return "/fake/nvidia-smi" if self.gpu else None
+        return "/fake/nvidia-smi" if name == "nvidia-smi" and self.gpu else None
 
     def run(self, args):
         self.calls.append(args)
         if args[0] == "sysctl":
             return "16000000000" if args[-1] == "hw.memsize" else "fictional silicon"
+        if "driver_version" in args[1]:
+            return "555.42.01\n"
         if "memory.free" in args[1]:
             return "8000 MiB\n"
         return "fictional gpu, 10000 MiB\n"
@@ -62,7 +63,9 @@ def test_gpu_uses_free_not_total_and_exact_queries():
     assert fake.calls == [
         ["/fake/nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
         ["/fake/nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader"],
+        ["/fake/nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
     ]
+    assert result["accelerator"] == {"backend": "CUDA", "version": "555.42.01"}
     original = fake.run
     fake.run = lambda args: "100 MiB\n" if "memory.free" in args[1] else original(args)
     assert diagnose(fake)["advice"]["profile"] == "api"
@@ -73,6 +76,7 @@ def test_apple_unified_and_macos_intel():
     assert result["cpu"]["model"] == "fictional silicon"
     assert result["ram"]["total_bytes"] == 16000000000
     assert result["gpu"]["status"] == "unified"
+    assert result["accelerator"]["backend"] == "Metal"
     assert result["advice"]["profile"] == "api"
     assert "unknown" in result["ram"]["available_bytes"]
     assert diagnose(Fake("Darwin", "x86_64"))["gpu"]["status"] == "none"
@@ -157,3 +161,92 @@ def test_platform_failure_preserves_reason():
     result = diagnose(fake)
     assert "platform unavailable" in result["ram"]["total_bytes"]
     assert result["advice"]["profile"] == "api"
+
+
+def test_rocm_and_invalid_accelerator_output():
+    fake = Fake()
+    fake.which = lambda name: "/fake/rocm-smi" if name == "rocm-smi" else None
+    fake.run = lambda args: (
+        "======== ROCm System Management Interface ========\nDriver version: 6.8.5\n"
+    )
+    assert diagnose(fake)["accelerator"] == {"backend": "ROCm", "version": "6.8.5"}
+    fake.run = lambda args: "invalid"
+    assert diagnose(fake)["accelerator"]["backend"] == "unknown"
+    assert diagnose(Fake())["accelerator"]["backend"] == "none"
+
+
+def test_ollama_opt_in_and_parsing():
+    fake = Fake()
+
+    def fixture():
+        return {
+            "models": [
+                {"name": "fictional-cpu", "size": 100, "size_vram": 0},
+                {"name": "fictional-gpu", "size": 100, "size_vram": 100},
+                {"name": "fictional-mixed", "size": 100, "size_vram": 25},
+            ]
+        }
+
+    fake.ollama = fixture
+    assert diagnose(fake)["ollama"] == "disabled"
+    assert [m["device"] for m in diagnose(fake, ollama=True)["ollama"]] == ["CPU", "GPU", "CPU/GPU"]
+    fake.ollama = lambda: {"models": []}
+    assert diagnose(fake, ollama=True)["ollama"] == []
+    fake.ollama = lambda: {"models": [{"name": "x", "size": 1, "size_vram": 2}]}
+    assert "unknown" in diagnose(fake, ollama=True)["ollama"]
+
+    def fail():
+        raise OSError("unavailable")
+
+    fake.ollama = fail
+    assert "unavailable" in diagnose(fake, ollama=True)["ollama"]
+
+
+def test_cli_ollama_injected(monkeypatch, capsys):
+    import ops_assist.doctor as doctor
+
+    monkeypatch.setattr(
+        Fake, "ollama", lambda self: {"models": [{"name": "fictional", "size": 2, "size_vram": 2}]}
+    )
+    monkeypatch.setattr(doctor, "Probes", Fake)
+    assert cli.main(["doctor", "--ollama"]) == 0
+    assert "fictional" in capsys.readouterr().out
+    assert cli.main(["doctor", "--ollama", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["ollama"][0]["device"] == "GPU"
+
+
+def test_http_probe_uses_fixed_loopback_and_bounds(monkeypatch):
+    import ops_assist.doctor as doctor
+
+    calls = []
+
+    class Response:
+        status = 200
+
+        def read(self, limit):
+            assert limit == 65537
+            return b'{"models": []}'
+
+    class Connection:
+        def __init__(self, host, port, timeout):
+            calls.append((host, port, timeout))
+
+        def request(self, method, path):
+            calls.append((method, path))
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            calls.append("closed")
+
+    monkeypatch.setattr(doctor.http.client, "HTTPConnection", Connection)
+    assert Probes().ollama() == {"models": []}
+    assert calls == [("127.0.0.1", 11434, 2), ("GET", "/api/ps"), "closed"]
+    monkeypatch.setattr(Response, "status", 302)
+    with pytest.raises(ValueError):
+        Probes().ollama()
+    monkeypatch.setattr(Response, "status", 200)
+    monkeypatch.setattr(Response, "read", lambda self, limit: b"x" * limit)
+    with pytest.raises(ValueError):
+        Probes().ollama()
