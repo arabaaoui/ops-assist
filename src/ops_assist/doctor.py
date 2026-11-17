@@ -90,6 +90,8 @@ def _gpu(probes, system, machine):
             "free_bytes": None,
         }
     executable = probes.which("nvidia-smi")
+    if not executable and probes.which("rocm-smi"):
+        return {"status": "gpu", "name": "ROCm GPU", "total_bytes": None, "free_bytes": None}
     if not executable:
         return {"status": "none", "name": "none", "total_bytes": None, "free_bytes": None}
     rows = probes.run([executable, "--query-gpu=name,memory.total", "--format=csv,noheader"])
@@ -201,7 +203,11 @@ def diagnose(probes=None, *, ollama=False):
         f"Measured free {'GPU memory' if gpu['status'] == 'gpu' else 'RAM'}: "
         f"{memory / 1e9:.2f} GB. "
         if isinstance(memory, int)
-        else "Usable free memory is unknown. "
+        else (
+            "GPU memory is unknown. "
+            if gpu["status"] == "gpu"
+            else "Usable free memory is unknown. "
+        )
     )
     reason += (
         "This may fit; speed and actual memory use vary."

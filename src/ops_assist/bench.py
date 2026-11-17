@@ -1,5 +1,6 @@
 """Measure streamed text generation without treating chunks as tokens."""
 
+import ipaddress
 import os
 import statistics
 import time
@@ -29,9 +30,13 @@ def benchmark(
     if not prompt.strip() or len(prompt.encode("utf-8")) > 65536:
         raise ValueError("prompt must be nonempty and at most 65536 bytes")
     model = settings.models[0]
-    base = settings.api_base
+    base = settings.api_base or os.environ.get("OLLAMA_API_BASE") or "http://localhost:11434"
     local_model = model.startswith(("ollama/", "ollama_chat/"))
-    local_base = not base or urlsplit(base).hostname in ("localhost", "127.0.0.1", "::1")
+    host = urlsplit(base).hostname
+    try:
+        local_base = host == "localhost" or ipaddress.ip_address(host).is_loopback
+    except (ValueError, TypeError):
+        local_base = False
     if not allow_remote and (settings.profile != "local" or not local_model or not local_base):
         raise ValueError("remote profile, model or endpoint requires --allow-remote")
     check_profile_env(settings, dict(os.environ))
@@ -40,7 +45,7 @@ def benchmark(
     samples = []
     for _ in range(runs):
         start = clock()
-        kwargs = {"api_base": base} if base else {}
+        kwargs = {"api_base": base}
         try:
             stream = completion(
                 model=model,

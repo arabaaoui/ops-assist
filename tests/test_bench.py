@@ -126,3 +126,32 @@ def test_cli_json_table_and_refusal(monkeypatch, tmp_path, capsys):
     assert "Median" in capsys.readouterr().out
     assert cli.main(["bench", "--profile", "api", "--prompt-file", str(path)]) == 1
     assert "allow-remote" in capsys.readouterr().err
+
+
+def test_environment_endpoint_guard(monkeypatch):
+    settings = replace(load_settings(env={}), api_base=None)
+    calls = []
+
+    def completion(**kwargs):
+        calls.append(kwargs)
+        return iter([chunk("ok")])
+
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://remote.invalid")
+    with pytest.raises(ValueError, match="allow-remote"):
+        benchmark(settings, "x", 1, completion=completion)
+    benchmark(settings, "x", 1, completion=completion, allow_remote=True)
+    assert calls[-1]["api_base"] == "http://remote.invalid"
+    for base in ("http://localhost:11434", "http://[::1]:11434"):
+        monkeypatch.setenv("OLLAMA_API_BASE", base)
+        benchmark(settings, "x", 1, completion=completion)
+        assert calls[-1]["api_base"] == base
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://localhost.evil")
+    with pytest.raises(ValueError, match="allow-remote"):
+        benchmark(settings, "x", 1, completion=completion)
+
+
+def test_prompt_file_size_before_decoding(tmp_path, capsys):
+    path = tmp_path / "large"
+    path.write_bytes(b"\xff" * 65537)
+    assert cli.main(["bench", "--prompt-file", str(path)]) == 1
+    assert "65536 bytes" in capsys.readouterr().err

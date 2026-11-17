@@ -84,3 +84,5 @@ L'évaluation complète exige un modèle ; elle ne mesure pas seule la qualité 
 Comparez les résultats à longueur de prompt et limites de génération constantes.
 Étudiez PagedAttention et le continuous batching avec l'article de Kwon et al.
 Hors ligne, relisez les tests et dessinez l'évolution du cache pendant le decode.
+
+Le fichier de prompt est limité à 64 Kio avant décodage. L’endpoint effectif provient de la configuration, puis de `OLLAMA_API_BASE`, puis de `http://localhost:11434` ; une adresse hors boucle locale exige `--allow-remote`.

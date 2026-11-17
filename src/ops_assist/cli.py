@@ -115,7 +115,12 @@ def main(argv: list[str] | None = None) -> int:
                 env["OPS_ASSIST_PROFILE"] = args.profile
             settings = load_settings(env)
             with args.prompt_file.open("rb") as file:
-                prompt = file.read(65537).decode("utf-8")
+                if os.fstat(file.fileno()).st_size > 65536:
+                    raise ValueError("prompt file must be at most 65536 bytes")
+                data = file.read(65537)
+                if len(data) > 65536:
+                    raise ValueError("prompt file must be at most 65536 bytes")
+                prompt = data.decode("utf-8")
             result = benchmark(
                 settings, prompt, args.runs, allow_remote=args.allow_remote, ollama=args.ollama
             )
@@ -206,12 +211,26 @@ def main(argv: list[str] | None = None) -> int:
                             )
                         ]
                         formatted = [
-                            "unknown" if value is None else f"${value:.6f}" for value in values
+                            (f"n/a ({row['reasons'][key]})" if key in row["reasons"] else "unknown")
+                            if value is None
+                            else ("$0 (local)" if value == 0 else f"${value:.6f}")
+                            for key, value in zip(
+                                (
+                                    "cache_off_fast_off",
+                                    "cache_on_fast_off",
+                                    "cache_off_fast_on",
+                                    "cache_on_fast_on",
+                                ),
+                                values,
+                                strict=True,
+                            )
                         ]
                         print(
                             f"{row['incident']:24} "
                             + "  ".join(f"{value:>20}" for value in formatted)
                         )
+                    for note in sorted({note for row in rows for note in row["notes"]}):
+                        print(f"Note: {note}")
                 return 0
             if args.eval_command == "run":
                 from .evaluation import _check_tools_mode, evaluate, evaluate_tiers

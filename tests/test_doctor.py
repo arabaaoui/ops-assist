@@ -250,3 +250,15 @@ def test_http_probe_uses_fixed_loopback_and_bounds(monkeypatch):
     monkeypatch.setattr(Response, "read", lambda self, limit: b"x" * limit)
     with pytest.raises(ValueError):
         Probes().ollama()
+
+
+def test_rocm_gpu_memory_unknown():
+    fake = Fake()
+    fake.which = lambda name: "/fake/rocm-smi" if name == "rocm-smi" else None
+    fake.run = lambda args: "Driver version: 6.1"
+    result = diagnose(fake)
+    assert result["accelerator"]["backend"] == "ROCm"
+    assert result["gpu"]["status"] == "gpu"
+    assert result["gpu"]["free_bytes"] is None
+    assert result["advice"]["profile"] == "api"
+    assert "GPU memory is unknown" in result["advice"]["reason"]

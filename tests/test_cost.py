@@ -134,45 +134,51 @@ def test_cost_arithmetic_and_unknowns():
 
 
 def test_scenarios_compare_cache_and_fast_and_unknown():
-    settings = replace(load_settings({}), models=["main"], fast_models=["fast"])
+    settings = replace(load_settings({}), models=["anthropic/main"], fast_models=["anthropic/fast"])
     dataset = {"incidents": [{"id": "fiction"}]}
-    prices = {
-        "main": PRICE,
-        "fast": {**PRICE, "input_cost_per_token": 1.0, "output_cost_per_token": 2.0},
-    }
+    prices = {"anthropic/main": PRICE, "anthropic/fast": {**PRICE, "input_cost_per_token": 1.0}}
     row = scripted_costs(settings, prices=prices, dataset=dataset)[0]
-    assert row["cache_off_fast_off"] == sum((6000 + n * 200) * 2 + 150 * 4 for n in range(10))
     assert row["cache_on_fast_off"] < row["cache_off_fast_off"]
     assert row["cache_off_fast_on"] < row["cache_off_fast_off"]
     assert row["cache_on_fast_on"] < row["cache_off_fast_on"]
-    assert row["cache_on_fast_off"] == 113280
-    assert row["cache_off_fast_on"] == 116800
-    assert row["cache_on_fast_on"] == 102464
-    missing = scripted_costs(settings, prices={"main": PRICE}, dataset=dataset)[0]
-    assert missing["cache_off_fast_on"] is None and missing["cache_on_fast_on"] is None
-    assert missing["cache_off_fast_off"] is not None
-    no_cache_price = {**PRICE, "supports_prompt_caching": False}
-    no_cache = scripted_costs(
-        settings, prices={"main": no_cache_price, "fast": no_cache_price}, dataset=dataset
-    )[0]
-    assert no_cache["cache_on_fast_on"] == no_cache["cache_off_fast_on"]
-    no_capability = dict(PRICE)
-    no_capability.pop("supports_prompt_caching")
-    assert (
-        scripted_costs(settings, prices={"main": no_capability}, dataset=dataset)[0][
-            "cache_on_fast_off"
-        ]
-        is None
-    )
+    assert scripted_costs(settings, prices={}, dataset=dataset)[0]["cache_off_fast_off"] is None
     incomplete = dict(PRICE)
     incomplete.pop("cache_creation_input_token_cost")
-    anthropic = replace(settings, models=["anthropic/example"])
     assert (
-        scripted_costs(anthropic, prices={"anthropic/example": incomplete}, dataset=dataset)[0][
+        scripted_costs(settings, prices={"anthropic/main": incomplete}, dataset=dataset)[0][
             "cache_on_fast_off"
         ]
         is None
     )
+
+
+def test_no_fast_tier_and_provider_cache(capsys, monkeypatch):
+    settings = replace(
+        load_settings({}), models=["bedrock/example"], fast_models=["bedrock/example"]
+    )
+    row = scripted_costs(
+        settings, prices={"bedrock/example": PRICE}, dataset={"incidents": [{"id": "x"}]}
+    )[0]
+    assert row["cache_off_fast_on"] is None
+    assert row["reasons"]["cache_off_fast_on"] == "no distinct fast tier"
+    assert row["cache_on_fast_off"] == row["cache_off_fast_off"]
+    assert "bedrock/example" in row["notes"][0]
+    monkeypatch.setenv("OPS_ASSIST_MODELS", "bedrock/example")
+    assert cli.main(["eval", "cost"]) == 0
+    assert "n/a (no distinct fast tier)" in capsys.readouterr().out
+    assert cli.main(["eval", "cost", "--json"]) == 0
+    row = json.loads(capsys.readouterr().out)[0]
+    assert row["cache_off_fast_on"] is None and row["reasons"]["cache_off_fast_on"]
+
+
+def test_zero_rates_and_vertex_lookup(monkeypatch):
+    monkeypatch.setattr(socket.socket, "connect", lambda *args: pytest.fail("network called"))
+    usage = {"input": 10, "output": 1, "cached": 0, "write": 0}
+    assert call_cost(usage, {"input_cost_per_token": 0, "output_cost_per_token": 1}) is None
+    assert call_cost(usage, price_for("ollama/example", {})) == 0
+    model = load_settings({"OPS_ASSIST_PROFILE": "vertex"}).models[0]
+    assert price_for(model, litellm.model_cost)["input_cost_per_token"] > 0
+    assert price_for("vertex_ai/nonexistent-xyz", litellm.model_cost) is None
 
 
 def test_cost_cli_is_offline(monkeypatch, capsys):

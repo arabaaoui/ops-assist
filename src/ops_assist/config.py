@@ -147,15 +147,23 @@ PROVIDER_KEYS = {
     "anthropic": "ANTHROPIC_API_KEY",
     "mistral": "MISTRAL_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
+    "vertex_ai": ("VERTEXAI_PROJECT", "VERTEXAI_LOCATION"),
+    "bedrock": ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION_NAME"),
+    "azure": ("AZURE_API_KEY", "AZURE_API_BASE", "AZURE_API_VERSION"),
 }
 
 
 def missing_fast_keys(settings: Settings, env: dict[str, str]) -> list[str]:
     """Find missing credentials for known providers in the expert chain."""
     required = {
-        PROVIDER_KEYS[provider]
+        key
         for model in settings.fast_models or settings.models
         if (provider := model.partition("/")[0].lower()) in PROVIDER_KEYS
+        for key in (
+            (PROVIDER_KEYS[provider],)
+            if isinstance(PROVIDER_KEYS[provider], str)
+            else PROVIDER_KEYS[provider]
+        )
     }
     return sorted(key for key in required if not env.get(key, "").strip())
 

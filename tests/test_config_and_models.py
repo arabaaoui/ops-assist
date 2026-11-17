@@ -191,3 +191,18 @@ def test_invalid_required_variables_are_refused(tmp_path, value):
 )
 def test_bundled_hosted_models_support_tools_in_local_cost_map(model):
     assert litellm.model_cost[model]["supports_function_calling"] is True
+
+
+def test_cloud_fast_provider_keys():
+    from dataclasses import replace
+
+    from ops_assist.config import load_settings, missing_fast_keys
+
+    for provider, keys in {
+        "vertex_ai": {"VERTEXAI_PROJECT", "VERTEXAI_LOCATION"},
+        "bedrock": {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION_NAME"},
+        "azure": {"AZURE_API_KEY", "AZURE_API_BASE", "AZURE_API_VERSION"},
+    }.items():
+        settings = replace(load_settings({}), fast_models=[provider + "/model"])
+        assert set(missing_fast_keys(settings, {})) == keys
+        assert missing_fast_keys(settings, dict.fromkeys(keys, "value")) == []

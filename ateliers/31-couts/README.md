@@ -90,3 +90,5 @@ Restez hors ligne en utilisant les tests `OPS_ASSIST_TEST_ASYNC_TICK=1 uv run py
 Comparez aussi la qualité des niveaux avec l'atelier 25, sans supposer que les deux réponses sont identiques.
 
 ## bilan du module 5
+
+Sans modèle rapide distinct, les colonnes correspondantes indiquent `n/a (no distinct fast tier)` ; en JSON elles valent `null` avec une raison. Le cache simulé concerne Anthropic direct et les caches automatiques OpenAI/Gemini : pour les autres fournisseurs, une note indique que les montants restent identiques. Les prix Vertex sont résolus par LiteLLM dans sa carte locale. Un tarif nul hébergé est inconnu ; Ollama local est gratuit et affiché `$0 (local)`.
