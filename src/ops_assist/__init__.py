@@ -7,7 +7,7 @@ import os
 # the copy bundled with the package. Set before anything imports litellm.
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 
 def call_metadata(agent_name: str, profile: str | None = None) -> dict[str, str]:

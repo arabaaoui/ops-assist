@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ops-assist
+spec:
+  type: ClusterIP
+  selector:
+    app: ops-assist
+  ports:
+    - port: 8080
+      targetPort: 8080

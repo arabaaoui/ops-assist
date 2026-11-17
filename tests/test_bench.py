@@ -45,7 +45,7 @@ def test_benchmark_timing_usage_and_summary():
     assert calls[0]["metadata"] == {
         "agent_name": "benchmark",
         "profile": "local",
-        "ops_assist_version": "0.1.0",
+        "ops_assist_version": "1.0.0",
     }
 
 

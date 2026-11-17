@@ -175,3 +175,7 @@ The root `catalog-info.yaml` describes a Backstage Component with an agent exten
 ## Production readiness review
 
 The [production review](production-review.md) maps capabilities, validation, observability and stopping or recovery to repository evidence and records gaps before deployment. [Workshop 40](../ateliers/40-production/README.md) applies the same questions offline. This documentation adds no CLI command, configuration, model call or dependency.
+
+## End-to-end release examples
+
+The [offline demo](../scripts/demo.sh) uses the existing replay tools and security callbacks with a scripted model, a fictional injected fault and an injected in-memory demo client. It automatically confirms one simulated rollback and prints a separate insufficient-data report; neither is evidence about a live service. The [deployment examples](../deploy/) expose the existing A2A ASGI app with a referenced bearer secret. Kubernetes runs non-root with a read-only root filesystem and temporary writable state; its network policy denies egress until adapted. The Cloud Run example and Kubernetes resources require an image, secret provisioning and a trusted proxy that rewrites the agent card's loopback URL. They are structurally tested offline, not deployed. See [known limits](known-limits.md) and [workshop 41](../ateliers/41-de-bout-en-bout/README.md).

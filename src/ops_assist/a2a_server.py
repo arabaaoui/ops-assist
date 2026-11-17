@@ -27,7 +27,7 @@ def build_card(port: int = 8000, *, token: str | None = None) -> AgentCard:
     return AgentCard(
         name="ops_assist",
         description="Investigates incidents using alerts, metrics, logs and changes.",
-        version="0.1.0",
+        version="1.0.0",
         supported_interfaces=[
             AgentInterface(
                 url=f"http://127.0.0.1:{port}/", protocol_binding="JSONRPC", protocol_version="1.0"

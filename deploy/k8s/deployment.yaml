@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ops-assist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ops-assist
+  template:
+    metadata:
+      labels:
+        app: ops-assist
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ops-assist
+          image: example.invalid/ops-assist:1.0.0
+          command: [python, -m, uvicorn]
+          args: ["ops_assist.a2a_server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080"]
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: OPS_ASSIST_A2A_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ops-assist-a2a-token
+                  key: token
+            - name: OPS_ASSIST_STATE_DIR
+              value: /tmp/ops-assist
+          volumeMounts:
+            - name: temp
+              mountPath: /tmp
+      volumes:
+        - name: temp
+          emptyDir: {}

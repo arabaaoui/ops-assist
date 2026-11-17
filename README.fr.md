@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 40.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 41, version 1.0.0.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : presque chaque
 chapitre lui ajoute une capacité, étiquetée `etape-NN`. Les chapitres 1 à 4 correspondent aux étapes 1 à 4 ; le
@@ -88,7 +88,9 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?" --show-contex
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md), [32 — AIDLC](ateliers/32-aidlc/README.md), [33 — évaluations](ateliers/33-evaluations/README.md), [34 — traces](ateliers/34-traces/README.md), [35 — red team](ateliers/35-red-team/README.md), [36 — CI/CD](ateliers/36-ci-cd/README.md), [37 — échecs](ateliers/37-echecs/README.md), [38 — plateforme](ateliers/38-plateforme/README.md), [39 — passage à l’échelle](ateliers/39-echelle/README.md), [40 — revue de production](ateliers/40-production/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md), [32 — AIDLC](ateliers/32-aidlc/README.md), [33 — évaluations](ateliers/33-evaluations/README.md), [34 — traces](ateliers/34-traces/README.md), [35 — red team](ateliers/35-red-team/README.md), [36 — CI/CD](ateliers/36-ci-cd/README.md), [37 — échecs](ateliers/37-echecs/README.md), [38 — plateforme](ateliers/38-plateforme/README.md), [39 — passage à l’échelle](ateliers/39-echelle/README.md), [40 — revue de production](ateliers/40-production/README.md), [41 — de bout en bout](ateliers/41-de-bout-en-bout/README.md).
+
+Le parcours hors ligne `OPS_ASSIST_TEST_ASYNC_TICK=1 scripts/demo.sh` présente une enquête scriptée et une confirmation simulée. Voir le [démarrage](docs/getting-started.md) et les [limites](docs/known-limits.md).
 
 ## Organisation
 
@@ -120,6 +122,10 @@ src/ops_assist/
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
+deploy/cloudrun/, deploy/k8s/  exemples de déploiement
+scripts/demo.sh       démonstration scriptée hors ligne
+docs/getting-started.md, docs/known-limits.md  démarrage et limites
+CHANGELOG.md, SECURITY.md, CONTRIBUTING.md  informations de version
 .github/workflows/    CI gates and image publication
 Dockerfile            non-root container image
 BEHAVIOR_CHANGELOG.md behaviour changes and evaluation results
@@ -254,3 +260,5 @@ La [revue](docs/failure-review.md) relie besoin, données, validation et coût �
 Le catalogue `catalog-info.yaml` décrit la gouvernance de l’agent ; son budget est indicatif. Aucun réglage ni commande CLI ne sont ajoutés : `OPS_ASSIST_TEST_ASYNC_TICK=1 .venv/bin/pytest -q tests/test_catalog.py` vérifie la cohérence hors ligne. Voir [l’atelier 39](ateliers/39-echelle/README.md).
 
 La [revue de production](docs/production-review.md) relie capacités, validation, observabilité et reprise à des preuves et des lacunes. Aucune commande CLI ni configuration supplémentaire : l’[atelier 40](ateliers/40-production/README.md) propose une revue hors ligne.
+
+L’étape 41 ajoute `scripts/demo.sh`, les exemples `deploy/cloudrun/` et `deploy/k8s/`, et la documentation de version. Aucun déploiement réel n’est effectué.

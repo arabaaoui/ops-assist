@@ -68,7 +68,7 @@ def test_litellm_embedder_uses_model_endpoint_and_order(monkeypatch):
             "metadata": {
                 "agent_name": "embeddings",
                 "profile": "local",
-                "ops_assist_version": "0.1.0",
+                "ops_assist_version": "1.0.0",
             },
         }
     ]

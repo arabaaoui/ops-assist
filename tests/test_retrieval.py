@@ -83,7 +83,7 @@ def test_llm_reranker_mocked_and_strict(monkeypatch):
     assert calls[0]["metadata"] == {
         "agent_name": "reranker",
         "profile": "local",
-        "ops_assist_version": "0.1.0",
+        "ops_assist_version": "1.0.0",
     }
     assert "untrusted" in calls[0]["messages"][0]["content"]
     for invalid in ("3 points", "4", "-1", "3\n0", None):

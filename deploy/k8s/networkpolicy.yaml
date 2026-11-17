@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ops-assist
+spec:
+  podSelector:
+    matchLabels:
+      app: ops-assist
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              access-ops-assist: "true"
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress: []
