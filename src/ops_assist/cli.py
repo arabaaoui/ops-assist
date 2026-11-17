@@ -31,6 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     """Parse and execute a command."""
     parser = argparse.ArgumentParser(prog="ops-assist")
     commands = parser.add_subparsers(dest="command", required=True)
+    redteam = commands.add_parser("redteam", help="run offline security regression probes")
+    redteam.add_argument("--fast", action="store_true")
+    redteam.add_argument("--json", action="store_true")
     commands.add_parser("mcp-serve", help="serve read-only observation tools over stdio")
     a2a = commands.add_parser("a2a-serve", help="serve the investigator over A2A on loopback")
     a2a.add_argument("--port", type=int, default=8000)
@@ -110,6 +113,18 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "redteam":
+            from .redteam import run_suite
+
+            results = run_suite(fast=args.fast)
+            if args.json:
+                print(json.dumps(results, ensure_ascii=False, indent=2))
+            else:
+                print("Probe | Expected | Observed | Result")
+                for row in results:
+                    status = "PASS" if row["pass"] else "FAIL"
+                    print(f"{row['probe']} | {row['expected']} | {row['observed']} | {status}")
+            return 0 if results and all(row["pass"] for row in results) else 1
         if args.command == "bench":
             from .bench import benchmark
 
