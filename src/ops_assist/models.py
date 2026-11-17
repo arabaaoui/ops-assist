@@ -46,6 +46,8 @@ class NotifyingLiteLlm(LiteLlm):
 def build_model(settings: Settings) -> BaseLlm:
     """Return the model the agent will call, with its fallback chain if more than one id."""
     kwargs = {"api_base": settings.api_base} if settings.api_base else {}
+    if settings.deterministic:
+        kwargs["drop_params"] = True
     models = []
     for index, name in enumerate(settings.models):
         model = NotifyingLiteLlm(model=name, **kwargs)

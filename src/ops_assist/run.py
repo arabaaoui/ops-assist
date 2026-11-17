@@ -49,6 +49,9 @@ class InvestigationTrace(list[ToolCallTrace]):
         self.session_id = ""
         self.warnings: list[str] = []
         self.models: list[str] = []
+        self.total_tokens = 0
+        self.approximate_calls = 0
+        self.unknown_calls = 0
         self.omitted_calls = 0
         self._pending: dict[str, ToolCallTrace] = {}
 
@@ -114,6 +117,8 @@ def investigate(
     confirm_tool: Callable[[str, dict[str, Any]], bool] | None = None,
     allow_writes: bool | None = None,
     save_memory: bool = True,
+    topology: str | None = None,
+    measure_usage: bool = False,
 ) -> tuple[IncidentReport, InvestigationTrace]:
     """Run an investigation in a new or resumed session and validate its report."""
     settings = settings or load_settings()
@@ -130,25 +135,58 @@ def investigate(
     if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
         if explicit_source:
             raise ValueError("MCP tools require an environment-configured source")
-        agent = build_agent(settings)
+        agent = build_agent(settings, topology=topology) if topology else build_agent(settings)
     else:
-        agent = build_agent(settings, source, allow_writes=allow_writes)
+        agent = (
+            build_agent(settings, source, allow_writes=allow_writes, topology=topology)
+            if topology
+            else build_agent(settings, source, allow_writes=allow_writes)
+        )
     trace = InvestigationTrace()
 
-    def measure(callback_context, llm_request):
+    pending_counts: dict[str, int | None] = {}
+
+    def measure_before(callback_context, llm_request):
+        name = callback_context.agent_name
+        # Clear the previous request before attempting to measure this one.
+        pending_counts[name] = None
         try:
             payload = llm_request.model_dump_json(exclude_none=True)
             tokenizer = {"type": "huggingface_tokenizer", "tokenizer": anthropic()}
             count = litellm.token_counter(model="", text=payload, custom_tokenizer=tokenizer)
             trace.context_tokens.append(count)
-            trace.context_agents.append(callback_context.agent_name)
+            trace.context_agents.append(name)
+            pending_counts[name] = count
         except Exception:  # noqa: BLE001 - measurement must not stop an investigation
             logger.exception("Context measurement failed")
         return None
 
-    if show_context:
-        for candidate in [agent, *agent.sub_agents]:
-            candidate.before_model_callback = measure
+    def measure_after(callback_context, llm_response):
+        prompt_count = pending_counts.pop(callback_context.agent_name, None)
+        usage = llm_response.usage_metadata
+        if usage is not None and usage.total_token_count is not None:
+            trace.total_tokens += usage.total_token_count
+        elif prompt_count is None:
+            trace.unknown_calls += 1
+        else:
+            try:
+                payload = llm_response.model_dump_json(exclude_none=True)
+                tokenizer = {"type": "huggingface_tokenizer", "tokenizer": anthropic()}
+                count = litellm.token_counter(model="", text=payload, custom_tokenizer=tokenizer)
+                trace.total_tokens += prompt_count + count
+                trace.approximate_calls += 1
+            except Exception:  # noqa: BLE001 - measurement must not stop an investigation
+                trace.unknown_calls += 1
+                logger.exception("Response measurement failed")
+        return None
+
+    for candidate in [agent, *agent.sub_agents]:
+        if settings.deterministic:
+            candidate.generate_content_config = types.GenerateContentConfig(temperature=0, seed=42)
+        if show_context or measure_usage:
+            candidate.before_model_callback = measure_before
+            if measure_usage:
+                candidate.after_model_callback = measure_after
     if model is not None:
         agent.model = model
         for expert in agent.sub_agents:

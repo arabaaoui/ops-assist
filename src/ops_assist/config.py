@@ -26,11 +26,13 @@ class Settings:
 
     profile: str
     models: list[str]
+    fast_models: list[str] = field(default_factory=list)
     api_base: str | None = None
     incident: str = "payment-latency"
     session_db: str | None = None
     requires_env: list[str] = field(default_factory=list)
     models_overridden: bool = False
+    deterministic: bool = False
 
     def describe(self) -> str:
         """One line for the startup log: what will actually be called."""
@@ -40,7 +42,10 @@ class Settings:
             host = url.netloc.rsplit("@", 1)[-1]
             safe_base = urlunsplit((url.scheme, host, url.path, "", ""))
             where = f" via {safe_base}"
-        return f"profile={self.profile} models={self.models}{where} incident={self.incident}"
+        return (
+            f"profile={self.profile} models={self.models} "
+            f"fast_models={self.fast_models or self.models}{where} incident={self.incident}"
+        )
 
 
 def _load_profiles(path: Path) -> dict[str, dict]:
@@ -54,6 +59,15 @@ def _load_profiles(path: Path) -> dict[str, dict]:
         models = p.get("models", [])
         if not isinstance(models, list) or not all(isinstance(m, str) and m for m in models):
             raise ValueError(f"{path}: profile {name!r}: 'models' must be a list of model ids")
+        fast = p.get("fast_models", models)
+        if (
+            not isinstance(fast, list)
+            or ("fast_models" in p and not fast)
+            or not all(isinstance(m, str) and m.strip() for m in fast)
+        ):
+            raise ValueError(
+                f"{path}: profile {name!r}: fast_models must be a non-empty list of model ids"
+            )
         required = p.get("requires_env")
         if (
             not isinstance(required, list)
@@ -98,12 +112,40 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
             if "OPS_ASSIST_API_BASE" in env
             else profile.get("api_base")
         )
+    if "OPS_ASSIST_FAST_MODELS" in env:
+        fast_models = [m.strip() for m in env["OPS_ASSIST_FAST_MODELS"].split(",") if m.strip()]
+        if not fast_models:
+            raise ValueError("OPS_ASSIST_FAST_MODELS is set but lists no model id")
+    elif "OPS_ASSIST_MODELS" in env:
+        fast_models = list(models)
+    else:
+        fast_models = list(profile.get("fast_models", models))
     return Settings(
         profile=name,
         models=models,
+        fast_models=fast_models,
         api_base=api_base,
         incident=env.get("OPS_ASSIST_INCIDENT", "").strip() or "payment-latency",
         session_db=env.get("OPS_ASSIST_SESSION_DB") or None,
         requires_env=list(profile["requires_env"]),
         models_overridden="OPS_ASSIST_MODELS" in env,
     )
+
+
+PROVIDER_KEYS = {
+    "gemini": "GEMINI_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+}
+
+
+def missing_fast_keys(settings: Settings, env: dict[str, str]) -> list[str]:
+    """Find missing credentials for known providers in the expert chain."""
+    required = {
+        PROVIDER_KEYS[provider]
+        for model in settings.fast_models or settings.models
+        if (provider := model.partition("/")[0].lower()) in PROVIDER_KEYS
+    }
+    return sorted(key for key in required if not env.get(key, "").strip())

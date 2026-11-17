@@ -12,7 +12,7 @@ import litellm
 from litellm.rust_bridge.tokenizer import anthropic
 from pydantic import ValidationError
 
-from .config import PROFILES_FILE, _load_profiles, load_settings
+from .config import PROFILES_FILE, _load_profiles, load_settings, missing_fast_keys
 from .memory import forget, list_memories
 from .observability import ObservationError, ReplaySource
 from .report import IncidentReport, check_observation_support
@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     eval_run.add_argument("--profile")
     eval_run.add_argument("--repeat", type=int, default=1)
     eval_run.add_argument("--show-reports", action="store_true")
+    eval_run.add_argument("--compare-tiers", action="store_true")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -81,7 +82,9 @@ def main(argv: list[str] | None = None) -> int:
             from .evaluation_dataset import load_dataset
 
             if args.eval_command == "run":
-                from .evaluation import evaluate
+                from .evaluation import _check_tools_mode, evaluate, evaluate_tiers
+
+                _check_tools_mode()
 
                 env = dict(os.environ)
                 if args.profile:
@@ -93,6 +96,27 @@ def main(argv: list[str] | None = None) -> int:
                         raise ValueError(
                             f"Missing required environment variable(s): {', '.join(missing)}"
                         )
+                if args.compare_tiers or os.environ.get("OPS_ASSIST_TOPOLOGY") == "experts":
+                    missing = missing_fast_keys(settings, env)
+                    if missing:
+                        raise ValueError(
+                            f"Missing expert environment variable(s): {', '.join(missing)}"
+                        )
+                if args.compare_tiers:
+                    results = evaluate_tiers(settings, args.repeat)
+                    print("Sampling variance remains; providers may ignore the fixed seed.")
+                    for tier, (result, path) in results.items():
+                        print(
+                            f"{tier}: pass rate={result['pass_rate']:.1%} "
+                            f"total tokens={result['total_tokens']} "
+                            f"(approximate calls={result['approximate_calls']}, "
+                            f"unknown calls={result['unknown_calls']}) "
+                            f"duration={result['duration_seconds']:.2f}s"
+                        )
+                        print(f"Result: {path}")
+                        if args.show_reports:
+                            print(json.dumps(result["results"], ensure_ascii=False, indent=2))
+                    return 0
                 result, path = evaluate(settings, args.repeat)
                 print("Incident                 Run  Valid Status Root Sources Forbidden Result")
                 for row in result["results"]:
@@ -233,6 +257,10 @@ def main(argv: list[str] | None = None) -> int:
             missing = [key for key in settings.requires_env if not os.environ.get(key, "").strip()]
             if missing:
                 raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
+        if args.command == "investigate" and os.environ.get("OPS_ASSIST_TOPOLOGY") == "experts":
+            missing = missing_fast_keys(settings, dict(os.environ))
+            if missing:
+                raise ValueError(f"Missing expert environment variable(s): {', '.join(missing)}")
         if args.command == "profile":
             print(settings.describe())
             for key in settings.requires_env:

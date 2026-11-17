@@ -4,6 +4,7 @@ import json
 import os
 import re
 import secrets
+import time
 from dataclasses import replace
 
 from .evaluation_dataset import DATA, load_dataset
@@ -130,54 +131,12 @@ def score_report(report, expected: dict) -> dict[str, bool]:
     }
 
 
-def evaluate(settings, repeat: int = 1, *, model=None) -> tuple[dict, object]:
-    """Run each replay in a fresh session, retaining failures in the denominator."""
-    if not 1 <= repeat <= 100:
-        raise ValueError("repeat must be between 1 and 100")
-    dataset = load_dataset()
-    rows = []
-    for case in dataset["incidents"]:
-        expected = json.loads((DATA / "incidents" / case["id"] / "expected.json").read_text())
-        for iteration in range(1, repeat + 1):
-            try:
-                report, _ = investigate(
-                    case["question"],
-                    settings=replace(settings, incident=case["id"], session_db=None),
-                    source=ReplaySource(case["id"], root=DATA / "incidents"),
-                    model=model,
-                    allow_writes=False,
-                    save_memory=False,
-                )
-                report = IncidentReport.model_validate(report)
-                check_observation_support(report)
-                checks = score_report(report, expected)
-                saved_report = _redact(report.model_dump(mode="json"))
-                error = None
-            except Exception as exc:  # Individual failures must count against the pass rate.
-                checks = dict.fromkeys(
-                    ("valid", "status", "root_cause", "sources", "forbidden"), False
-                )
-                saved_report = None
-                error = _redact(f"{type(exc).__name__}: {exc}")[:MAX_ERROR_LENGTH]
-            rows.append(
-                {
-                    "incident": case["id"],
-                    "iteration": iteration,
-                    "checks": checks,
-                    "passed": all(checks.values()),
-                    "error": error,
-                    "report": saved_report,
-                }
-            )
-    result = {
-        "dataset_version": dataset["version"],
-        "dataset_checksum": dataset["checksum"],
-        "profile": settings.profile,
-        "models": settings.models,
-        "repeat": repeat,
-        "pass_rate": sum(row["passed"] for row in rows) / len(rows),
-        "results": rows,
-    }
+def _check_tools_mode() -> None:
+    if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
+        raise ValueError("Evaluation does not support OPS_ASSIST_TOOLS=mcp; use inprocess")
+
+
+def _save_result(result: dict) -> object:
     store = StateStore()
     name = "eval-" + secrets.token_hex(16) + ".json"
     fd = os.open(
@@ -186,4 +145,104 @@ def evaluate(settings, repeat: int = 1, *, model=None) -> tuple[dict, object]:
     with os.fdopen(fd, "w", encoding="utf-8") as stream:
         json.dump(result, stream, ensure_ascii=False, indent=2)
         stream.write("\n")
-    return result, store.root / name
+    return store.root / name
+
+
+def _evaluate(settings, repeat, *, model=None, compare=False):
+    _check_tools_mode()
+    if not 1 <= repeat <= 100:
+        raise ValueError("repeat must be between 1 and 100")
+    dataset = load_dataset()
+    tiers = (
+        {
+            "main": replace(settings, fast_models=settings.models, deterministic=True),
+            "fast": replace(settings, deterministic=True),
+        }
+        if compare
+        else {"single": settings}
+    )
+    if compare == "fast":
+        tiers.pop("main")
+    totals = {
+        name: {"rows": [], "tokens": 0, "approximate": 0, "unknown": 0, "duration": 0.0}
+        for name in tiers
+    }
+    for case in dataset["incidents"]:
+        expected = json.loads((DATA / "incidents" / case["id"] / "expected.json").read_text())
+        for iteration in range(1, repeat + 1):
+            for name, tier_settings in tiers.items():
+                total = totals[name]
+                started = time.monotonic()
+                try:
+                    report, trace = investigate(
+                        case["question"],
+                        settings=replace(tier_settings, incident=case["id"], session_db=None),
+                        source=ReplaySource(case["id"], root=DATA / "incidents"),
+                        model=model,
+                        allow_writes=False,
+                        save_memory=False,
+                        **({"topology": "experts", "measure_usage": True} if compare else {}),
+                    )
+                    if compare:
+                        total["tokens"] += trace.total_tokens
+                        total["approximate"] += trace.approximate_calls
+                        total["unknown"] += trace.unknown_calls
+                    report = IncidentReport.model_validate(report)
+                    check_observation_support(report)
+                    checks = score_report(report, expected)
+                    saved_report = _redact(report.model_dump(mode="json"))
+                    error = None
+                except Exception as exc:  # Failures count against the pass rate.
+                    checks = dict.fromkeys(
+                        ("valid", "status", "root_cause", "sources", "forbidden"), False
+                    )
+                    saved_report = None
+                    error = _redact(f"{type(exc).__name__}: {exc}")[:MAX_ERROR_LENGTH]
+                finally:
+                    total["duration"] += time.monotonic() - started
+                total["rows"].append(
+                    {
+                        "incident": case["id"],
+                        "iteration": iteration,
+                        "checks": checks,
+                        "passed": all(checks.values()),
+                        "error": error,
+                        "report": saved_report,
+                    }
+                )
+    results = {}
+    for name, tier_settings in tiers.items():
+        total = totals[name]
+        rows = total["rows"]
+        result = {
+            "dataset_version": dataset["version"],
+            "dataset_checksum": dataset["checksum"],
+            "profile": settings.profile,
+            "models": settings.models,
+            "repeat": repeat,
+            "pass_rate": sum(row["passed"] for row in rows) / len(rows),
+            "results": rows,
+        }
+        if compare:
+            result.update(
+                total_tokens=total["tokens"],
+                approximate_calls=total["approximate"],
+                unknown_calls=total["unknown"],
+                duration_seconds=total["duration"],
+                fast_models=tier_settings.fast_models or tier_settings.models,
+            )
+        results[name] = (result, _save_result(result))
+    return results
+
+
+def evaluate(settings, repeat: int = 1, *, model=None, compare_tier: bool = False):
+    """Run each replay in a fresh session, retaining failures in the denominator."""
+    if compare_tier:
+        # Preserve the original programmatic entry point for a single measured tier.
+        return _evaluate(settings, repeat, model=model, compare="fast")["fast"]
+    return _evaluate(settings, repeat, model=model)["single"]
+
+
+def evaluate_tiers(settings, repeat: int = 1, *, model=None):
+    """Compare main and fast experts in alternating incident/repetition order."""
+    return _evaluate(settings, repeat, model=model, compare=True)

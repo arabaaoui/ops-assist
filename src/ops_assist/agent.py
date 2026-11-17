@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from google.adk.agents import Agent
@@ -51,10 +52,11 @@ def build_agent(
     source: ObservationSource | None = None,
     *,
     allow_writes: bool | None = None,
+    topology: str | None = None,
 ) -> Agent:
     """Assemble the agent from settings and an observation source (replay by default)."""
     settings = settings or load_settings()
-    topology = os.environ.get("OPS_ASSIST_TOPOLOGY", "single")
+    topology = topology or os.environ.get("OPS_ASSIST_TOPOLOGY", "single")
     if topology not in ("single", "experts"):
         raise ValueError("OPS_ASSIST_TOPOLOGY must be single or experts")
     mode = os.environ.get("OPS_ASSIST_TOOLS", "inprocess")
@@ -106,7 +108,9 @@ def build_agent(
                 after_tool_callback=security.after,
                 on_tool_error_callback=security.error,
                 description=f"Gather evidence using {', '.join(names)}; return sourced findings.",
-                model=build_model(settings),
+                model=build_model(replace(settings, models=settings.fast_models or settings.models))
+                if settings.fast_models and settings.fast_models != settings.models
+                else build_model(settings),
                 instruction=(
                     "Gather evidence only within your assigned tools. Return sourced facts and "
                     "unknowns to the coordinator; do not create the final incident report. "
