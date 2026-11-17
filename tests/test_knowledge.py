@@ -90,7 +90,7 @@ def test_similarity_is_not_relevance():
     assert all(metadata[key] for key in ("id", "title", "updated", "owner"))
     assert "decoy" not in document.casefold() and "exercise" not in document.casefold()
     expected = json.loads(root.joinpath("incidents/payment-latency/expected.json").read_text())
-    assert "connection pool" in expected["root_cause"]
+    assert "connection pool" in expected["answer"]
 
 
 def test_cli_offline_and_errors(monkeypatch, tmp_path, capsys):

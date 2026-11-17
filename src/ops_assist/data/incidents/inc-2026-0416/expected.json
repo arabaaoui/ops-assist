@@ -1,0 +1,18 @@
+{
+  "status": "insufficient_data",
+  "root_cause_service": null,
+  "root_cause_change": null,
+  "answer": "The available observations do not establish a specific cause.",
+  "required_facts_sources": [
+    "alerts",
+    "metrics",
+    "logs"
+  ],
+  "forbidden_conclusions": [
+    "A particular deployment caused these failures."
+  ],
+  "accepted_hypotheses": [],
+  "accepted_statuses": [
+    "insufficient_data"
+  ]
+}

@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 20.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 21.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -50,6 +50,8 @@ Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDEN
 
 ## Commandes et ateliers
 
+`ops-assist eval list` affiche hors ligne le jeu d’incidents versionné.
+
 ```bash
 uv run ops-assist profile
 OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
@@ -70,7 +72,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?" --show-contex
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md).
 
 ## Organisation
 
@@ -86,11 +88,11 @@ src/ops_assist/
   observability/      replay, Prometheus and Loki sources
   skills/             bundled investigation methods
   knowledge/          ingestion, retrieval, evaluation, graph and approved postmortems
-  data/               profiles, fictional incidents and knowledge corpus
+  data/               profiles, fictional incidents, evaluation dataset and knowledge corpus
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
-ateliers/             ateliers en français, dont la base vivante
+ateliers/             ateliers en français, dont l’architecture des données
 tests/                offline contract and integration tests
 ```
 
@@ -151,3 +153,7 @@ Le coordinateur choisit quand chercher. `investigate --show-context` affiche cha
 ## Étape 20 — base vivante
 
 `knowledge draft-postmortem --session ID` utilise le rapport validé enregistré par la CLI ; sans option il utilise le dernier, et `--report fichier.json` accepte un rapport JSON. Le brouillon expurgé reste hors index jusqu’à `knowledge approve ID` et sa confirmation. `--yes` exige `--approver` ; hors terminal, il exige aussi `OPS_ASSIST_ALLOW_NONINTERACTIVE_APPROVAL=1` et inscrit `approval: noninteractive`. Un humain doit décider de la validation ; cette option permet une automatisation explicite. Après modification du corps, sa relecture et `--accept-edits` sont nécessaires. L’approbation inscrit auteur et date, puis réindexe les documents modifiés. `knowledge stale` et les résultats de recherche utilisent `OPS_ASSIST_KNOWLEDGE_MAX_AGE_DAYS` (90 par défaut). Les rapports enregistrés peuvent contenir des données non expurgées : protégez-les. Voir l’[atelier 20](ateliers/20-base-vivante/README.md).
+
+## Étape 21 — données d’évaluation
+
+`ops-assist eval list` affiche hors ligne la version et les six incidents fictifs du jeu. Le manifeste et la datasheet sont dans `src/ops_assist/data/eval/` ; les corrigés restent séparés des outils. Voir l’[atelier 21](ateliers/21-donnees/README.md).

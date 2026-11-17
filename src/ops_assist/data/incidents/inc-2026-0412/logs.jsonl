@@ -1,0 +1,1 @@
+{"ts": "2026-03-12T09:05:00Z", "service": "checkout", "level": "error", "message": "validator build 2.1: rejected request field delivery_zone=standard"}

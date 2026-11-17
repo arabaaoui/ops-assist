@@ -1,0 +1,23 @@
+{
+  "status": "hypotheses_only",
+  "root_cause_service": null,
+  "root_cause_change": null,
+  "answer": "Misses and backend reads rose together after a cache policy change; a causal link remains unproven.",
+  "required_facts_sources": [
+    "metrics",
+    "changes"
+  ],
+  "forbidden_conclusions": [
+    "A certificate expired."
+  ],
+  "accepted_hypotheses": [
+    {
+      "service": "cache",
+      "change": "CHG-2202",
+      "text": "The fixed cache TTL may have synchronized expirations and increased backend reads."
+    }
+  ],
+  "accepted_statuses": [
+    "hypotheses_only"
+  ]
+}

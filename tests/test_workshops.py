@@ -68,10 +68,13 @@ def test_tokens_uses_selected_incident(monkeypatch, tmp_path, capsys):
     folder = tmp_path / "another"
     folder.mkdir()
     (folder / "incident.json").write_text("{}")
-    (folder / "extra.txt").write_text("fictional data")
+    (folder / "alerts.json").write_text("fictional data")
+    (folder / "extra.txt").write_text("untrusted extra")
     monkeypatch.setenv("OPS_ASSIST_INCIDENTS_DIR", str(tmp_path))
     assert cli.main(["tokens", "--incident", "another"]) == 0
-    assert "extra.txt" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "alerts.json" in output
+    assert "extra.txt" not in output
 
 
 def test_profile_and_ask_use_resolved_settings(monkeypatch, capsys):

@@ -1,0 +1,23 @@
+{
+  "status": "hypotheses_only",
+  "root_cause_service": null,
+  "root_cause_change": null,
+  "answer": "An expired certificate appears in failed handshakes; the failed rotation is a possible explanation.",
+  "required_facts_sources": [
+    "logs",
+    "changes"
+  ],
+  "forbidden_conclusions": [
+    "A cache eviction caused the failures."
+  ],
+  "accepted_hypotheses": [
+    {
+      "service": "auth-api",
+      "change": "CHG-2203",
+      "text": "The incomplete rotation may have left the expired certificate in service."
+    }
+  ],
+  "accepted_statuses": [
+    "hypotheses_only"
+  ]
+}

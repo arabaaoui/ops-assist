@@ -1,4 +1,15 @@
 {
-  "root_cause": "Deployment v2.14 of payment-api (08:55) exhausts the orders-db connection pool: database timeouts drive p95 latency up threefold.",
-  "note": "Answer key for evaluations. Never read by the agent's tools."
+  "status": "root_cause_identified",
+  "root_cause_service": "payment-api",
+  "root_cause_change": "DEP-2140",
+  "answer": "The connection pool saturation followed the payment release and caused database timeouts.",
+  "required_facts_sources": [
+    "alerts",
+    "metrics",
+    "logs",
+    "changes"
+  ],
+  "forbidden_conclusions": [
+    "The database host ran out of disk space."
+  ]
 }

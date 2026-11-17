@@ -1,0 +1,10 @@
+[
+  {
+    "id": "CHG-2202",
+    "ts": "2026-03-12T08:55:00Z",
+    "service": "cache",
+    "kind": "config",
+    "author": "operator",
+    "summary": "cache TTL changed from 3600 seconds with jitter to fixed 300 seconds"
+  }
+]

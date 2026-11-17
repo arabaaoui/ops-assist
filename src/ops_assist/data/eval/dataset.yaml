@@ -1,0 +1,28 @@
+version: 1.1.0
+created: '2026-11-17'
+changelog:
+- version: 1.0.0
+  description: Initial fictional incident evaluation set.
+- version: 1.1.0
+  description: Neutral identifiers, evidence-calibrated hypotheses and corrected metric
+    units.
+incidents:
+- id: payment-latency
+  question: Which evidence explains the payment slowdown in this recording?
+  expected: ../incidents/payment-latency/expected.json
+- id: inc-2026-0412
+  question: What explains the checkout request failures in this recording?
+  expected: ../incidents/inc-2026-0412/expected.json
+- id: inc-2026-0413
+  question: What explains the burst of backend reads in this recording?
+  expected: ../incidents/inc-2026-0413/expected.json
+- id: inc-2026-0414
+  question: What interrupted secure connections in this recording?
+  expected: ../incidents/inc-2026-0414/expected.json
+- id: inc-2026-0415
+  question: What prevented database writes in this recording?
+  expected: ../incidents/inc-2026-0415/expected.json
+- id: inc-2026-0416
+  question: Can the intermittent payment failures be attributed to a specific cause?
+  expected: ../incidents/inc-2026-0416/expected.json
+checksum: 2441a928e338623a70080423bfa1192910851c5de9a21529f835271f5fb6ea8a

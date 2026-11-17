@@ -15,6 +15,10 @@ from typing import Any
 
 from .base import LOG_LEVELS, MAX_LOG_LINES, ObservationError
 
+OBSERVATION_FILES = frozenset(
+    {"incident.json", "alerts.json", "metrics.json", "logs.jsonl", "changes.json"}
+)
+
 BUNDLED_INCIDENTS = Path(__file__).resolve().parents[1] / "data" / "incidents"
 
 
@@ -48,8 +52,13 @@ class ReplaySource:
     # -- reading the recording: every failure becomes an ObservationError --------
 
     def _read(self, file: str) -> str:
+        if file not in OBSERVATION_FILES:
+            raise ObservationError("recorded file is not an observation")
         try:
-            return (self.dir / file).read_text(encoding="utf-8")
+            path = self.dir / file
+            if path.is_symlink() or path.resolve().parent != self.dir.resolve():
+                raise ObservationError("recorded observation must be a local file")
+            return path.read_text(encoding="utf-8")
         except OSError as e:
             raise ObservationError(f"recorded incident has no readable {file}: {e}") from e
 

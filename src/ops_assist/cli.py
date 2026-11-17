@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("mcp-serve", help="serve read-only observation tools over stdio")
     a2a = commands.add_parser("a2a-serve", help="serve the investigator over A2A on loopback")
     a2a.add_argument("--port", type=int, default=8000)
+    eval_parser = commands.add_parser("eval")
+    eval_parser.add_subparsers(dest="eval_command", required=True).add_parser("list")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -68,6 +70,14 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "eval":
+            from .evaluation_dataset import load_dataset
+
+            dataset = load_dataset()
+            print(f"Dataset version: {dataset['version']}")
+            for case in dataset["incidents"]:
+                print(f"{case['id']}: {case['question']}")
+            return 0
         if args.command == "a2a-serve":
             if not 1 <= args.port <= 65535:
                 raise ValueError("port must be between 1 and 65535")
@@ -203,10 +213,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Model: {model}; tokenizer: LiteLLM bundled Anthropic (approximate)")
             print(f"{'File':24} {'Characters':>12} {'Tokens':>10}")
             total_chars = total_tokens = 0
-            for path in sorted(source.dir.iterdir()):
-                if not path.is_file() or path.name == "expected.json":
+            from .observability.replay import OBSERVATION_FILES
+
+            for name in sorted(OBSERVATION_FILES):
+                path = source.dir / name
+                if not path.exists() and not path.is_symlink():
                     continue
-                text = path.read_text(encoding="utf-8")
+                text = source._read(name)
                 count = litellm.token_counter(model=model, text=text, custom_tokenizer=tokenizer)
                 total_chars += len(text)
                 total_tokens += count

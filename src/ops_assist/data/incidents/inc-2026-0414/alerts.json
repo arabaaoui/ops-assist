@@ -1,0 +1,10 @@
+[
+  {
+    "id": "ALR-inc-2026-0414",
+    "name": "TLSHandshakeFailuresHigh",
+    "service": "auth-api",
+    "severity": "warning",
+    "since": "2026-03-12T09:00:00Z",
+    "summary": "Observed elevated error or resource usage"
+  }
+]

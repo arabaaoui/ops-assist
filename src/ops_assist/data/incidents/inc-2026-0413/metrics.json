@@ -1,0 +1,32 @@
+[
+  {
+    "name": "cache_miss_ratio",
+    "service": "cache",
+    "unit": "ratio",
+    "points": [
+      [
+        "2026-03-12T08:54:00Z",
+        0.01
+      ],
+      [
+        "2026-03-12T09:05:00Z",
+        0.9
+      ]
+    ]
+  },
+  {
+    "name": "backend_read_requests_per_second",
+    "service": "cache",
+    "unit": "requests/s",
+    "points": [
+      [
+        "2026-03-12T08:54:00Z",
+        20
+      ],
+      [
+        "2026-03-12T09:05:00Z",
+        1200
+      ]
+    ]
+  }
+]

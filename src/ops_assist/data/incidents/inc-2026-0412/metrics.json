@@ -1,0 +1,17 @@
+[
+  {
+    "name": "http_error_ratio",
+    "service": "checkout",
+    "unit": "ratio",
+    "points": [
+      [
+        "2026-03-12T08:55:00Z",
+        0.01
+      ],
+      [
+        "2026-03-12T09:05:00Z",
+        0.9
+      ]
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "DEP-2201",
+    "ts": "2026-03-12T08:55:00Z",
+    "service": "checkout",
+    "kind": "deployment",
+    "author": "operator",
+    "summary": "checkout deployment includes validator build 2.1"
+  }
+]

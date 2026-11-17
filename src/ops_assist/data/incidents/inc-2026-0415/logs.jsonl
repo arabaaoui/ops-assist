@@ -1,0 +1,1 @@
+{"ts": "2026-03-12T09:05:00Z", "service": "orders-db", "level": "error", "message": "write failed: no space left on device"}

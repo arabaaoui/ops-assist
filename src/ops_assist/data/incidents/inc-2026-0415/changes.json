@@ -1,0 +1,10 @@
+[
+  {
+    "id": "CHG-2204",
+    "ts": "2026-03-12T08:55:00Z",
+    "service": "orders-db",
+    "kind": "config",
+    "author": "operator",
+    "summary": "database log retention increased from 1 to 7 days"
+  }
+]
