@@ -8,8 +8,10 @@ import sys
 from pathlib import Path
 
 from google.adk.agents import Agent
+from google.adk.skills import load_skill_from_dir
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from google.adk.tools.skill_toolset import SkillToolset
 from mcp import StdioServerParameters
 
 from .config import Settings, load_settings
@@ -23,6 +25,24 @@ logger = logging.getLogger(__name__)
 INSTRUCTION = (Path(__file__).resolve().parent / "prompts" / "investigator.md").read_text(
     encoding="utf-8"
 )
+
+
+SKILLS_DIR = Path(__file__).resolve().parent / "skills"
+
+
+def load_skills():
+    """Load the bundled investigation methods and identify invalid files."""
+    skills = []
+    for name in ("latency", "errors-5xx"):
+        directory = SKILLS_DIR / name
+        try:
+            skill = load_skill_from_dir(directory)
+            if not skill.instructions.strip():
+                raise ValueError("instructions must not be empty")
+            skills.append(skill)
+        except (ValueError, OSError) as exc:
+            raise ValueError(f"{directory / 'SKILL.md'}: {exc}") from exc
+    return skills
 
 
 def build_agent(settings: Settings | None = None, source: ObservationSource | None = None) -> Agent:
@@ -58,6 +78,7 @@ def build_agent(settings: Settings | None = None, source: ObservationSource | No
             ),
             next(tool for tool in tools if tool.__name__ == "recall_past_incidents"),
         ]
+    tools.append(SkillToolset(skills=load_skills()))
     logger.info("ops-assist: %s source=%s", settings.describe(), source.name)
     return Agent(
         name="ops_assist",

@@ -254,3 +254,13 @@ def test_server_tool_timeout_reaches_adk_client(monkeypatch, tmp_path):
         "status": "error",
         "error": "get_alerts timed out after 0.15 seconds",
     }
+
+
+def test_skills_and_mcp_in_the_same_agent_loop(monkeypatch):
+    monkeypatch.setenv("OPS_ASSIST_SOURCE", "replay")
+    scenario = os.path.join(os.path.dirname(__file__), "mcp_skills_scenario.py")
+    result = subprocess.run(
+        [sys.executable, scenario], capture_output=True, text=True, timeout=40, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert "MCP_SKILLS_OK" in result.stdout

@@ -112,7 +112,7 @@ def test_the_instruction_treats_tool_results_as_data():
 
 def test_the_agent_starts_read_only_with_a_report_schema():
     agent = build_agent(load_settings(env={}))
-    assert [t.__name__ for t in agent.tools] == [
+    assert [t.__name__ for t in agent.tools[:-1]] == [
         "get_alerts",
         "get_metric",
         "get_logs",

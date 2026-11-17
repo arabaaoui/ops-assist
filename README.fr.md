@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 09.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 10.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -53,7 +53,7 @@ Des incidents enregistrés peuvent vivre hors du paquet avec `OPS_ASSIST_INCIDEN
 
 ```bash
 uv run ops-assist profile
-uv run ops-assist mcp-serve  # MCP sur stdio
+uv run ops-assist mcp-serve  # MCP sur stdio ; skills disponibles dans les deux modes
 uv run ops-assist tokens
 uv run ops-assist validate examples/reports/valid.json
 uv run ops-assist ask "Qu'est-ce que la latence ?"
@@ -62,7 +62,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 Les trois premières commandes fonctionnent sans modèle. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md).
 
 ## Licence
 
@@ -77,3 +77,7 @@ Le module 1 comprend désormais les ateliers 04 à 07 : cinq sous-systèmes, cho
 ## Étape 09 — MCP
 
 `ops-assist mcp-serve` expose les quatre outils d’observation en lecture seule sur stdio. Définissez `OPS_ASSIST_TOOLS=mcp` pour qu’ADK lance et utilise ce serveur ; `inprocess` reste le mode par défaut. Le serveur utilise la source configurée et l’incident sélectionné ; le rappel de mémoire reste local. Une source Python injectée ne traverse pas la frontière de processus. L’[atelier hors ligne](ateliers/09-mcp/README.md) montre la découverte et les appels sans modèle.
+
+## Étape 10 — skills
+
+L’agent charge les skills intégrés `latency` et `errors-5xx` au démarrage dans les deux modes d’outils. ADK expose leurs noms et descriptions avec `list_skills` et leurs instructions avec `load_skill` ; le modèle choisit de les utiliser ou non. Aucune nouvelle commande CLI ni aucun fournisseur ne sont nécessaires pour les consulter. L’[atelier hors ligne](ateliers/10-skills/README.md) compare skills et MCP.
