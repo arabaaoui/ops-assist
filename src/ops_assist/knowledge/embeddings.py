@@ -8,6 +8,8 @@ from typing import Protocol
 
 import litellm
 
+from .. import call_metadata
+
 
 class EmbeddingProviderError(ValueError):
     """A provider call failed without exposing its potentially sensitive details."""
@@ -76,7 +78,9 @@ class LiteLLMEmbedder:
             return []
         kwargs = {"api_base": self.api_base} if self.api_base else {}
         try:
-            response = litellm.embedding(model=self.model, input=texts, **kwargs)
+            response = litellm.embedding(
+                model=self.model, input=texts, metadata=call_metadata("embeddings"), **kwargs
+            )
         except Exception as exc:
             model = " ".join(self.model.split())
             raise EmbeddingProviderError(

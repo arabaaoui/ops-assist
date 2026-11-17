@@ -38,6 +38,12 @@ def test_tiers_construct_distinct_models(monkeypatch):
     settings = replace(load_settings({}), models=["main"], fast_models=["fast", "backup"])
     agent = build_agent(settings)
     assert agent.model.model == "main"
+    assert agent.model._additional_args["metadata"]["agent_name"] == "ops_assist"
+    assert all(
+        model._additional_args["metadata"]["agent_name"] == expert.name
+        for expert in agent.sub_agents
+        for model in expert.model.models
+    )
     assert all([m.model for m in e.model.models] == ["fast", "backup"] for e in agent.sub_agents)
 
 
@@ -48,7 +54,10 @@ def test_scripted_usage_with_and_without_metadata(monkeypatch, tmp_path):
         async def generate_content_async(self, llm_request, stream=False):
             async for response in super().generate_content_async(llm_request, stream):
                 response.usage_metadata = types.GenerateContentResponseUsageMetadata(
-                    total_token_count=17
+                    total_token_count=17,
+                    prompt_token_count=10,
+                    cached_content_token_count=4,
+                    candidates_token_count=7,
                 )
                 yield response
 
@@ -57,6 +66,10 @@ def test_scripted_usage_with_and_without_metadata(monkeypatch, tmp_path):
     )
     assert trace.total_tokens == 17 * len(trace.context_tokens)
     assert trace.approximate_calls == 0
+    assert trace.usage and all(
+        row["input_tokens"] == 10 and row["cached_input_tokens"] == 4 and row["output_tokens"] == 7
+        for row in trace.usage
+    )
     _, estimated = investigate(
         "Why?", model=RolesModel(seen=[]), topology="experts", measure_usage=True, save_memory=False
     )

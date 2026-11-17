@@ -61,7 +61,16 @@ def test_litellm_embedder_uses_model_endpoint_and_order(monkeypatch):
     e = LiteLLMEmbedder("example/model", "http://localhost:1234")
     assert e.embed(["a", "b"]) == [[1, 0], [0, 1]]
     assert calls == [
-        {"model": "example/model", "input": ["a", "b"], "api_base": "http://localhost:1234"}
+        {
+            "model": "example/model",
+            "input": ["a", "b"],
+            "api_base": "http://localhost:1234",
+            "metadata": {
+                "agent_name": "embeddings",
+                "profile": "local",
+                "ops_assist_version": "0.1.0",
+            },
+        }
     ]
     assert e.embed([]) == [] and len(calls) == 1
     assert e.id != LiteLLMEmbedder("example/model").id

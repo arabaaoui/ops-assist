@@ -34,6 +34,7 @@ class Settings:
     requires_env: list[str] = field(default_factory=list)
     models_overridden: bool = False
     deterministic: bool = False
+    prompt_cache: bool = True
 
     def describe(self) -> str:
         """One line for the startup log: what will actually be called."""
@@ -90,6 +91,9 @@ def _load_profiles(path: Path) -> dict[str, dict]:
 def load_settings(env: dict[str, str] | None = None) -> Settings:
     """Build the settings from the environment and the profiles file; refuse anything unclear."""
     env = dict(os.environ if env is None else env)
+    cache_setting = env.get("OPS_ASSIST_PROMPT_CACHE", "on").strip().lower()
+    if cache_setting not in {"on", "off"}:
+        raise ValueError("OPS_ASSIST_PROMPT_CACHE must be on or off")
     path = Path(env.get("OPS_ASSIST_PROFILES_FILE") or PROFILES_FILE)
     profiles = _load_profiles(path)
     name = env.get("OPS_ASSIST_PROFILE", "").strip() or "local"
@@ -133,6 +137,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         session_db=env.get("OPS_ASSIST_SESSION_DB") or None,
         requires_env=list(profile["requires_env"]),
         models_overridden="OPS_ASSIST_MODELS" in env,
+        prompt_cache=cache_setting == "on",
     )
 
 

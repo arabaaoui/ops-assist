@@ -96,6 +96,7 @@ def test_profile_and_ask_use_resolved_settings(monkeypatch, capsys):
     assert calls == [
         {
             "model": "test/model",
+            "metadata": {"agent_name": "ask", "profile": "local", "ops_assist_version": "0.1.0"},
             "messages": [{"role": "user", "content": "question"}],
             "api_base": "http://localhost:1234",
         }

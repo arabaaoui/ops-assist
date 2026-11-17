@@ -9,6 +9,7 @@ from typing import Protocol
 
 import litellm
 
+from .. import call_metadata
 from .index import VectorIndex
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ class LLMReranker:
             try:
                 response = litellm.completion(
                     model=self.model,
+                    metadata=call_metadata("reranker"),
                     messages=[
                         {
                             "role": "system",

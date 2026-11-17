@@ -163,7 +163,7 @@ def test_experts_use_every_configured_profile(monkeypatch, profile):
     settings = load_settings(env={"OPS_ASSIST_PROFILE": profile})
     calls = []
 
-    def model_for(resolved):
+    def model_for(resolved, agent_name="ops_assist"):
         calls.append(resolved)
         return RolesModel(seen=[])
 

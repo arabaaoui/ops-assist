@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 
 import litellm
 
+from . import call_metadata
 from .config import check_profile_env
 from .doctor import Probes, _ollama_models
 
@@ -47,6 +48,7 @@ def benchmark(
                 stream=True,
                 stream_options={"include_usage": True},
                 max_tokens=512,
+                metadata=call_metadata("benchmark", settings.profile),
                 **kwargs,
             )
             first = last = None

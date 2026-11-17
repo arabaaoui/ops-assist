@@ -115,7 +115,8 @@ def build_agent(
                         api_base=settings.fast_api_base
                         if settings.fast_models
                         else settings.api_base,
-                    )
+                    ),
+                    agent_name=name,
                 ),
                 instruction=(
                     "Gather evidence only within your assigned tools. Return sourced facts and "

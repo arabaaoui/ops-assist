@@ -12,6 +12,7 @@ import litellm
 from litellm.rust_bridge.tokenizer import anthropic
 from pydantic import ValidationError
 
+from . import call_metadata
 from .config import (
     PROFILES_FILE,
     _load_profiles,
@@ -36,6 +37,9 @@ def main(argv: list[str] | None = None) -> int:
     eval_parser = commands.add_parser("eval")
     eval_commands = eval_parser.add_subparsers(dest="eval_command", required=True)
     eval_commands.add_parser("list")
+    eval_cost = eval_commands.add_parser("cost", help="estimate scripted costs offline")
+    eval_cost.add_argument("--profile")
+    eval_cost.add_argument("--json", action="store_true")
     eval_run = eval_commands.add_parser("run")
     eval_run.add_argument("--profile")
     eval_run.add_argument("--repeat", type=int, default=1)
@@ -175,6 +179,40 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "eval":
             from .evaluation_dataset import load_dataset
 
+            if args.eval_command == "cost":
+                from .cost import scripted_costs
+
+                env = dict(os.environ)
+                if args.profile:
+                    env["OPS_ASSIST_PROFILE"] = args.profile
+                settings = load_settings(env)
+                rows = scripted_costs(settings)
+                if args.json:
+                    print(json.dumps(rows, indent=2))
+                else:
+                    print("Scripted estimate in USD; 10 calls per incident, not measured usage")
+                    print(
+                        "Incident                 cache off / fast off   cache on / fast off   "
+                        "cache off / fast on   cache on / fast on"
+                    )
+                    for row in rows:
+                        values = [
+                            row[key]
+                            for key in (
+                                "cache_off_fast_off",
+                                "cache_on_fast_off",
+                                "cache_off_fast_on",
+                                "cache_on_fast_on",
+                            )
+                        ]
+                        formatted = [
+                            "unknown" if value is None else f"${value:.6f}" for value in values
+                        ]
+                        print(
+                            f"{row['incident']:24} "
+                            + "  ".join(f"{value:>20}" for value in formatted)
+                        )
+                return 0
             if args.eval_command == "run":
                 from .evaluation import _check_tools_mode, evaluate, evaluate_tiers
 
@@ -425,6 +463,7 @@ def main(argv: list[str] | None = None) -> int:
             kwargs = {"api_base": settings.api_base} if settings.api_base else {}
             response = litellm.completion(
                 model=settings.models[0],
+                metadata=call_metadata("ask", settings.profile),
                 messages=[{"role": "user", "content": args.question}],
                 **kwargs,
             )

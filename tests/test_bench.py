@@ -42,6 +42,11 @@ def test_benchmark_timing_usage_and_summary():
         for c in calls
     )
     assert calls[0]["messages"] == [{"role": "user", "content": "hello"}]
+    assert calls[0]["metadata"] == {
+        "agent_name": "benchmark",
+        "profile": "local",
+        "ops_assist_version": "0.1.0",
+    }
 
 
 def test_missing_usage_and_empty_stream():

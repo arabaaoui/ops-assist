@@ -80,6 +80,11 @@ def test_llm_reranker_mocked_and_strict(monkeypatch):
         x["id"] for x in LLMReranker("example/model", "http://localhost").rerank("red", rows)
     ] == ["b", "c", "a"]
     assert calls[0]["model"] == "example/model" and calls[0]["api_base"] == "http://localhost"
+    assert calls[0]["metadata"] == {
+        "agent_name": "reranker",
+        "profile": "local",
+        "ops_assist_version": "0.1.0",
+    }
     assert "untrusted" in calls[0]["messages"][0]["content"]
     for invalid in ("3 points", "4", "-1", "3\n0", None):
         monkeypatch.setattr(

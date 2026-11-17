@@ -8,3 +8,12 @@ import os
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
 __version__ = "0.1.0"
+
+
+def call_metadata(agent_name: str, profile: str | None = None) -> dict[str, str]:
+    """Identify a LiteLLM call without including prompt data or credentials."""
+    return {
+        "agent_name": agent_name,
+        "profile": profile or os.environ.get("OPS_ASSIST_PROFILE", "").strip() or "local",
+        "ops_assist_version": __version__,
+    }

@@ -49,6 +49,8 @@ class InvestigationTrace(list[ToolCallTrace]):
         self.session_id = ""
         self.warnings: list[str] = []
         self.models: list[str] = []
+        self.usage: list[dict[str, Any]] = []
+        self.omitted_usage = 0
         self.total_tokens = 0
         self.approximate_calls = 0
         self.unknown_calls = 0
@@ -164,6 +166,22 @@ def investigate(
     def measure_after(callback_context, llm_response):
         prompt_count = pending_counts.pop(callback_context.agent_name, None)
         usage = llm_response.usage_metadata
+        if len(trace.usage) < MAX_TRACE_CALLS:
+            trace.usage.append(
+                {
+                    "agent": callback_context.agent_name,
+                    "model": llm_response.model_version,
+                    "input_tokens": usage.prompt_token_count if usage is not None else None,
+                    "cached_input_tokens": (
+                        usage.cached_content_token_count if usage is not None else None
+                    ),
+                    "output_tokens": usage.candidates_token_count if usage is not None else None,
+                }
+            )
+        else:
+            trace.omitted_usage += 1
+        if not measure_usage:
+            return None
         if usage is not None and usage.total_token_count:
             trace.total_tokens += usage.total_token_count
         elif prompt_count is None:
@@ -185,8 +203,7 @@ def investigate(
             candidate.generate_content_config = types.GenerateContentConfig(temperature=0, seed=42)
         if show_context or measure_usage:
             candidate.before_model_callback = measure_before
-            if measure_usage:
-                candidate.after_model_callback = measure_after
+        candidate.after_model_callback = measure_after
     if model is not None:
         agent.model = model
         for expert in agent.sub_agents:
