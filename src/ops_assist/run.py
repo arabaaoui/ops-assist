@@ -41,6 +41,7 @@ class InvestigationTrace(list[ToolCallTrace]):
         """Start an empty trace."""
         super().__init__()
         self.context_tokens: list[int] = []
+        self.context_agents: list[str] = []
         self.session_id = ""
         self.warnings: list[str] = []
         self.models: list[str] = []
@@ -76,19 +77,19 @@ def investigate(
     trace = InvestigationTrace()
 
     def measure(callback_context, llm_request):
-        del callback_context
         try:
             payload = llm_request.model_dump_json(exclude_none=True)
             tokenizer = {"type": "huggingface_tokenizer", "tokenizer": anthropic()}
-            trace.context_tokens.append(
-                litellm.token_counter(model="", text=payload, custom_tokenizer=tokenizer)
-            )
+            count = litellm.token_counter(model="", text=payload, custom_tokenizer=tokenizer)
+            trace.context_tokens.append(count)
+            trace.context_agents.append(callback_context.agent_name)
         except Exception:  # noqa: BLE001 - measurement must not stop an investigation
             logger.exception("Context measurement failed")
         return None
 
     if show_context:
-        agent.before_model_callback = measure
+        for candidate in [agent, *agent.sub_agents]:
+            candidate.before_model_callback = measure
     if model is not None:
         agent.model = model
         for expert in agent.sub_agents:

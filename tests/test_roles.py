@@ -99,6 +99,7 @@ def test_topology_ownership_and_validation(monkeypatch):
     )
     assert [t.__name__ for t in agent.tools if callable(t)] == ["recall_past_incidents"]
     assert "Delegate metrics" in agent.instruction
+    assert all("pretriage_data" in expert.instruction for expert in experts.values())
 
 
 @pytest.mark.parametrize("mode", ["inprocess", "mcp"])
@@ -140,7 +141,9 @@ def test_experts_execute_and_return_to_coordinator(monkeypatch, mode, tmp_path):
             {"get_logs", "get_changes"},
         ]
     model = RolesModel(seen=[])
-    report, trace = investigate("Why?", model=model)
+    report, trace = investigate("Why?", model=model, show_context=True)
+    assert set(trace.context_agents) == {"ops_assist", "metrics_expert", "logs_expert"}
+    assert len(trace.context_agents) == len(trace.context_tokens)
     assert report.summary == "Investigation complete"
     assert [t.name for t in trace] == ["metrics_expert", "get_alerts", "logs_expert", "get_changes"]
     assert len(model.seen) == 2 and all(x["status"] == "ok" for x in model.seen)

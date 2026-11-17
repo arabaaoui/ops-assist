@@ -42,7 +42,7 @@ Poursuivez la lecture :
 Pour comparer une série fictive brute à sa version plafonnée, exécutez :
 
 ```bash
-uv run python -c 'import json; from ops_assist.tools import make_tools; S=type("S",(),{"metric":lambda self,n,s:{"points":[[i,i] for i in range(1000)]}}); raw=S().metric("m","s"); capped=make_tools(S())[1]("m","s"); print("brut",len(json.dumps(raw)),"plafonné",len(json.dumps(capped)))'
+uv run python -c 'import asyncio,json; from ops_assist.tools import make_tools; S=type("S",(),{"metric":lambda self,n,s:{"points":[[i,i] for i in range(1000)]}}); raw=S().metric("m","s"); capped=asyncio.run(make_tools(S())[1]("m","s")); print("brut",len(json.dumps(raw)),"plafonné",len(json.dumps(capped)))'
 ```
 
 La taille affichée en caractères pour la version plafonnée doit être inférieure.

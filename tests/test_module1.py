@@ -107,4 +107,4 @@ def test_pretriage_reaches_model_and_context_cli(monkeypatch, tmp_path, capsys):
     assert cli.main(["investigate", "Why?", "--show-context"]) == 0
     out = capsys.readouterr().out
     assert "Approximate tokens of the serialized request" in out
-    assert re.search(r"\n\s*1\s+\d+", out)
+    assert re.search(r"\n\s*1\s+ops_assist\s+\d+", out)

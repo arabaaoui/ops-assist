@@ -2,7 +2,7 @@
 
 Durée : 30 à 45 minutes. Prérequis : environnement installé et, pour l'exécution interactive, un modèle configuré comme dans l'atelier 01, capable d'appeler des outils. Les données de rejeu sont fictives.
 
-Un agent réunit quatre ingrédients : un **modèle** qui choisit les prochaines étapes, une **instruction** qui définit son rôle, des **outils** qui accèdent aux observations, et une **boucle** qui transmet les résultats au modèle jusqu'à sa réponse. L'agent dispose de cinq outils : alertes, métriques, journaux, changements et rappel de résumés. Dans cet atelier, concentrez-vous sur `get_alerts` et observez les outils choisis.
+Un agent réunit quatre ingrédients : un **modèle** qui choisit les prochaines étapes, une **instruction** qui définit son rôle, des **outils** qui accèdent aux observations, et une **boucle** qui transmet les résultats au modèle jusqu'à sa réponse. L'agent dispose de cinq outils d’observation et de mémoire : alertes, métriques, journaux, changements et rappel de résumés. Il dispose aussi des outils de skills et, si activé, d’un retour arrière confirmé. Dans cet atelier, concentrez-vous sur `get_alerts` et observez les outils choisis.
 
 Dans une boucle souvent appelée **ReAct**, le modèle choisit un outil, reçoit son résultat et décide de la suite. La trace ci-dessous montre les appels et leurs arguments, puis le rapport JSON validé ; elle ne montre pas le raisonnement interne du modèle.
 

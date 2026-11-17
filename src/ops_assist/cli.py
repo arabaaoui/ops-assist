@@ -172,10 +172,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Warning: {warning}", file=sys.stderr)
             if args.show_context:
                 print(
-                    "Turn  Approximate tokens of the serialized request (not the provider's count)"
+                    "Turn  Agent  Approximate tokens of the serialized request "
+                    "(not the provider's count)"
                 )
                 for turn, count in enumerate(trace.context_tokens, 1):
-                    print(f"{turn:4}  {count:>25}")
+                    print(f"{turn:4}  {trace.context_agents[turn - 1]}  {count:>25}")
         return 0
     except (ValueError, OSError, ValidationError, ObservationError) as exc:
         print(str(exc), file=sys.stderr)

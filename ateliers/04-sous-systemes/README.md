@@ -47,7 +47,7 @@ Poursuivez la lecture :
 
 3. Retrouvez l’instruction qui distingue faits et hypothèses. Observez son rôle dans le raisonnement.
 
-4. Cherchez une fonction absente : pourquoi la communication entre agents est-elle encore future ? Observez les interfaces disponibles.
+4. Examinez la communication entre agents avec A2A dans `apps/oncall_assistant/` et `src/ops_assist/a2a_server.py`. Quels échanges traversent cette frontière ?
 
 ## Pour aller plus loin
 

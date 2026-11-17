@@ -265,3 +265,26 @@ def test_context_measurement_is_opt_in(monkeypatch):
     monkeypatch.setattr(run, "anthropic", unexpected)
     report, trace = investigate("Why?", model=ScriptedModel(seen=[]))
     assert report.summary and not trace.context_tokens and not calls
+
+
+def test_pretriage_bounds_alerts_and_nested_changes():
+    class Source:
+        def alerts(self):
+            return [
+                {
+                    "service": "s" * 301,
+                    "id": "i" * 301,
+                    "severity": "odd" * 200,
+                    "since": "2025-01-01T12:00:00Z",
+                }
+            ] * 51
+
+        def changes(self, service):
+            assert len(service) == 301
+            return [{"ts": "2025-01-01T11:59:00Z", "nested": [{"detail": "x" * 301}]}]
+
+    result = pretriage(Source())
+    assert result.truncated and len(result.firing_alert_ids) == 50
+    assert len(result.firing_alert_ids[0]) == len(result.affected_services[0]) == 300
+    assert all(len(warning) <= 300 for warning in result.warnings)
+    assert len(result.suspect_changes[0]["nested"][0]["detail"]) == 300

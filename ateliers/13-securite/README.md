@@ -22,7 +22,7 @@ La lecture seule est le défaut ; l'outil de retour arrière n'est alors pas exp
 `OPS_ASSIST_ALLOW_WRITES=1` expose l'outil, sans supprimer la confirmation humaine.
 ADK 2.14.1 suspend l'appel et transmet une demande de confirmation au client.
 La CLI demande de saisir exactement `yes` ; tout autre texte refuse.
-L'interface ADK web permet aussi de confirmer ou rejeter la demande.
+Avec `adk web apps/investigator`, l’opérateur humain confirme ou rejette chaque demande dans l’interface ADK web. Ne laissez pas `OPS_ASSIST_ALLOW_WRITES` exportée dans un shell partagé ; limitez-la à la commande lancée.
 Les serveurs A2A et MCP n’exposent jamais d’écriture.
 Un agent peut consulter des outils MCP et proposer un retour arrière confirmé dans la CLI ou ADK web.
 Un message A2A ne vaut pas confirmation humaine.

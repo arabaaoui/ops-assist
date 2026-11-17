@@ -21,6 +21,8 @@ from pydantic import ValidationError
 
 from ops_assist.report import IncidentReport
 
+MAX_ANSWER_BYTES = 64 * 1024
+
 
 class OnCallAssistant(BaseAgent):
     """Validate the completed remote output before returning any remote text."""
@@ -38,6 +40,8 @@ class OnCallAssistant(BaseAgent):
                     if event.content:
                         for part in event.content.parts or []:
                             if part.text and not part.thought:
+                                if len(part.text.encode("utf-8")) > MAX_ANSWER_BYTES:
+                                    raise ValueError("remote A2A answer exceeds 64 KiB")
                                 text = part.text
                     metadata = event.custom_metadata or {}
                     if "a2a:response" in metadata:
@@ -53,6 +57,8 @@ class OnCallAssistant(BaseAgent):
                     for part in artifact.get("parts", [])
                 ]
                 if parts:
+                    if sum(len(part.encode("utf-8")) for part in parts) > MAX_ANSWER_BYTES:
+                        raise ValueError("remote A2A answer exceeds 64 KiB")
                     text = "".join(parts)
             try:
                 report = IncidentReport.model_validate_json(text)

@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .observability import ObservationSource
+from .tools import _bounded
 
 
 class Triage(BaseModel):
@@ -31,7 +32,9 @@ def pretriage(source: ObservationSource) -> Triage:
     first: dict[str, datetime] = {}
     ids: list[str] = []
     warnings: list[str] = []
-    for alert in source.alerts():
+    alerts = source.alerts()
+    truncated = len(alerts) > 50
+    for alert in alerts[:50]:
         try:
             service, identifier = alert["service"], alert["id"]
             level = alert["severity"]
@@ -51,7 +54,6 @@ def pretriage(source: ObservationSource) -> Triage:
         ids.append(identifier)
     services = sorted(severity, key=lambda s: (-severity[s], s))
     changes = []
-    truncated = False
     for service in services:
         for change in source.changes(service):
             try:
@@ -63,18 +65,18 @@ def pretriage(source: ObservationSource) -> Triage:
                 if len(changes) >= 10:
                     truncated = True
                     continue
-                cleaned = {}
-                for key, value in change.items():
-                    if isinstance(value, str) and len(value) > 300:
-                        value = value[:300]
-                        truncated = True
-                    cleaned[key] = value
+                cleaned, cut = _bounded(change)
+                truncated |= cut
                 changes.append(cleaned)
+    bounded_services, services_cut = _bounded(services)
+    bounded_ids, ids_cut = _bounded(sorted(ids))
+    bounded_warnings, warnings_cut = _bounded(warnings)
+    truncated |= services_cut or ids_cut or warnings_cut
     return Triage(
-        affected_services=services,
-        firing_alert_ids=sorted(ids),
+        affected_services=bounded_services,
+        firing_alert_ids=bounded_ids,
         earliest_since=min(first.values(), default=None),
         suspect_changes=changes,
-        warnings=warnings,
+        warnings=bounded_warnings,
         truncated=truncated,
     )

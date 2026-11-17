@@ -61,7 +61,7 @@ uv run ops-assist ask "What is latency?"
 uv run ops-assist investigate "Why is payment slow?"
 ```
 
-The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
+`profile`, `a2a-serve`, `mcp-serve`, `tokens` and `validate` start without a model; an A2A investigation still requires one. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
 French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md).
 
@@ -69,16 +69,20 @@ French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 
 
 ```
 src/ops_assist/
-  agent.py            the agent (instruction, model, tools)
-  models.py           model routing and fallback chain
-  config.py           profiles and environment variables
-  report.py           the typed IncidentReport
-  tools.py            agent tools (read-only)
-  observability/      one interface; replay, Prometheus and Loki connectors
-  data/               model profiles and recorded, fictional incidents (shipped in the wheel)
-apps/investigator/    entry point for `adk web`
-tests/                contract suite for any source, report rules, fallback chain, agent loop
-                      on a scripted model, shareability scan
+  agent.py            agent, tools and expert topology
+  config.py, models.py  profiles, routing and fallback
+  report.py, triage.py  report validation and preliminary triage
+  tools.py, executor.py  tools and bounded execution
+  security.py         permissions, confirmation and audit
+  memory.py           incident summaries
+  mcp_server.py, a2a_server.py  protocol servers
+  observability/      replay, Prometheus and Loki sources
+  skills/             bundled investigation methods
+  data/               profiles and fictional incidents
+apps/investigator/    ADK web investigator
+apps/oncall_assistant/  A2A client
+deploy/litellm/       gateway configuration
+tests/                offline contract and integration tests
 ```
 
 ## License

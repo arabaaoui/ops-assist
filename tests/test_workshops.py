@@ -179,3 +179,37 @@ def test_model_override_skips_profile_key_check(monkeypatch, capsys):
     assert "not checked" in capsys.readouterr().out
     assert cli.main(["ask", "question"]) == 0
     assert capsys.readouterr().out.strip() == "ok"
+
+
+def test_offline_workshop_python_oneliners():
+    import os
+    import re
+    import shlex
+    import subprocess
+    import sys
+
+    commands = []
+    for readme in sorted((ROOT / "ateliers").glob("[0-1][0-9]-*/README.md")):
+        for block in re.findall(r"```(?:bash|sh)\n(.*?)```", readme.read_text(), re.S):
+            commands.extend(line for line in block.splitlines() if "uv run python -c " in line)
+    assert len(commands) == 3
+    for command in commands:
+        args = shlex.split(command)
+        index = args.index("uv")
+        env = os.environ.copy()
+        env.update(arg.split("=", 1) for arg in args[:index])
+        env["OPS_ASSIST_SOURCE"] = "replay"
+        env["OPS_ASSIST_TOOLS"] = "inprocess"
+        subprocess.run(
+            [sys.executable, *args[index + 3 :]], cwd=ROOT, env=env, check=True, timeout=30
+        )
+
+
+def test_env_example_documents_all_source_variables():
+    import re
+
+    variables = set()
+    for path in (ROOT / "src").rglob("*.py"):
+        variables.update(re.findall(r"OPS_ASSIST_[A-Z][A-Z0-9_]+", path.read_text()))
+    documented = set(re.findall(r"OPS_ASSIST_[A-Z][A-Z0-9_]+", (ROOT / ".env.example").read_text()))
+    assert variables <= documented

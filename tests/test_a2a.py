@@ -355,3 +355,17 @@ def test_a2a_constructs_read_only_agent_when_writes_enabled(monkeypatch, caplog,
     assert built and not built[0].before_tool_callback.__self__.allow_writes
     assert all(getattr(tool, "name", "") != "rollback_deployment" for tool in built[0].tools)
     assert "A2A always runs read-only" in caplog.text
+
+
+def test_oversized_remote_answer_is_rejected():
+    async def run():
+        remote = Agent(name="fake", model=GarbageModel(output="é" * 32769), description="Fake")
+        app = create_app(agent=remote)
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as client:
+                events = await _run_oncall(
+                    build_oncall("http://127.0.0.1:8000/.well-known/agent-card.json", client)
+                )
+        assert events[-1].error_message == "remote A2A answer exceeds 64 KiB"
+
+    asyncio.run(run())

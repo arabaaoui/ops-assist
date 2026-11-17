@@ -61,9 +61,29 @@ uv run ops-assist ask "Qu'est-ce que la latence ?"
 uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 ```
 
-Les trois premières commandes fonctionnent sans modèle. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
+`profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
 Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md).
+
+## Organisation
+
+```
+src/ops_assist/
+  agent.py            agent, tools and expert topology
+  config.py, models.py  profiles, routing and fallback
+  report.py, triage.py  report validation and preliminary triage
+  tools.py, executor.py  tools and bounded execution
+  security.py         permissions, confirmation and audit
+  memory.py           incident summaries
+  mcp_server.py, a2a_server.py  protocol servers
+  observability/      replay, Prometheus and Loki sources
+  skills/             bundled investigation methods
+  data/               profiles and fictional incidents
+apps/investigator/    ADK web investigator
+apps/oncall_assistant/  A2A client
+deploy/litellm/       gateway configuration
+tests/                offline contract and integration tests
+```
 
 ## Licence
 
