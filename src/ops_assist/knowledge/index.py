@@ -36,6 +36,7 @@ def load_documents() -> list[dict]:
                 {
                     "id": str(meta["id"]),
                     "title": str(meta["title"]),
+                    "service": str(meta["service"]),
                     "updated": str(meta["updated"]),
                     "body": parts[2],
                     "checksum": hashlib.sha256(text.encode()).hexdigest(),

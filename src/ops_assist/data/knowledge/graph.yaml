@@ -1,0 +1,17 @@
+nodes:
+  - payment-api
+  - checkout
+  - auth-api
+  - payments-db
+  - orders-db
+  - cache
+  - queue
+  - operations
+edges:
+  - {source: checkout, target: payment-api, relation: calls, updated: '2026-03-01'}
+  - {source: checkout, target: auth-api, relation: calls, updated: '2026-03-01'}
+  - {source: payment-api, target: orders-db, relation: depends_on, updated: '2026-03-01'}
+  - {source: payment-api, target: payments-db, relation: depends_on, updated: '2026-03-01'}
+  - {source: payment-api, target: cache, relation: depends_on, updated: '2026-03-01'}
+  - {source: payment-api, target: queue, relation: depends_on, updated: '2025-01-01'}
+  - {source: payment-api, target: operations, relation: owned_by, updated: '2026-03-01'}

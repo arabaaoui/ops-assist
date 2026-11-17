@@ -100,6 +100,7 @@ def test_topology_ownership_and_validation(monkeypatch):
     assert [t.__name__ for t in agent.tools if callable(t)] == [
         "recall_past_incidents",
         "search_knowledge",
+        "get_dependencies",
     ]
     assert "Delegate metrics" in agent.instruction
     assert all("pretriage_data" in expert.instruction for expert in experts.values())

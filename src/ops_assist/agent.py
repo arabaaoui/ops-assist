@@ -19,7 +19,7 @@ from .models import build_model
 from .observability import ObservationSource, source_from_env
 from .report import IncidentReport
 from .security import SecurityBoundary, make_rollback_tool
-from .tools import make_knowledge_tool, make_tools, tool_timeout
+from .tools import make_graph_tool, make_knowledge_tool, make_tools, tool_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,7 @@ def build_agent(
     elif mode == "mcp":
         tools = [mcp_tools(), next(t for t in tools if t.__name__ == "recall_past_incidents")]
     tools.append(make_knowledge_tool())
+    tools.append(make_graph_tool())
     if security.allow_writes:
         tools.append(make_rollback_tool(source, boundary=security))
     tools.append(SkillToolset(skills=load_skills()))

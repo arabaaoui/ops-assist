@@ -17,6 +17,7 @@ class Triage(BaseModel):
     earliest_since: datetime | None
     suspect_changes: list[dict[str, Any]]
     warnings: list[str] = Field(default_factory=list)
+    dependency_hints: list[dict[str, Any]] = Field(default_factory=list)
     truncated: bool = False
 
 
@@ -70,13 +71,32 @@ def pretriage(source: ObservationSource) -> Triage:
                 changes.append(cleaned)
     bounded_services, services_cut = _bounded(services)
     bounded_ids, ids_cut = _bounded(sorted(ids))
+    truncated |= services_cut or ids_cut
+    from .knowledge.graph import GraphError, dependencies
+
+    hints = []
+    for service in services:
+        try:
+            edges = dependencies(service)["edges"]
+        except GraphError as exc:
+            warnings.append(f"dependency graph unavailable: {exc}")
+            break
+        except ValueError:
+            continue
+        hints.extend(
+            {"service": service, "dependency": e["to"], "edge": e}
+            for e in edges
+            if e["type"] != "owned_by" and e["to"] in severity
+        )
+    truncated |= len(hints) > 10
     bounded_warnings, warnings_cut = _bounded(warnings)
-    truncated |= services_cut or ids_cut or warnings_cut
+    truncated |= warnings_cut
     return Triage(
         affected_services=bounded_services,
         firing_alert_ids=bounded_ids,
         earliest_since=min(first.values(), default=None),
         suspect_changes=changes,
         warnings=bounded_warnings,
+        dependency_hints=hints[:10],
         truncated=truncated,
     )

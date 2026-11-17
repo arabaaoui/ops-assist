@@ -127,7 +127,7 @@ def test_metrics_and_bundled_evaluation(monkeypatch, capsys):
         "vector": (0.575, 0.675),
         "bm25": (0.783, 1.000),
         "hybrid": (0.758, 0.795),
-        "hybrid+rerank": (0.783, 0.817),
+        "hybrid+rerank": (0.783, 0.808),
     }
     for i in (0, 1):
         assert scores["hybrid"][i] >= min(scores["vector"][i], scores["bm25"][i])

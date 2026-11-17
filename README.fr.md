@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 17.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 18.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -56,6 +56,7 @@ OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
 uv run ops-assist a2a-serve --port 8000
 uv run ops-assist mcp-serve  # MCP sur stdio ; skills disponibles dans les deux modes
 uv run ops-assist tokens
+uv run ops-assist triage
 uv run ops-assist knowledge index
 uv run ops-assist knowledge search "payment latency" -k 5
 uv run ops-assist knowledge eval
@@ -66,7 +67,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` et `validate` démarrent sans modèle ; une enquête A2A en nécessite toutefois un. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md), [14 — passerelle](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md).
 
 ## Organisation
 
@@ -81,7 +82,7 @@ src/ops_assist/
   mcp_server.py, a2a_server.py  protocol servers
   observability/      replay, Prometheus and Loki sources
   skills/             bundled investigation methods
-  knowledge/          ingestion, vector and BM25 retrieval, reranking and evaluation
+  knowledge/          ingestion, retrieval, evaluation and dependency graph
   data/               profiles, fictional incidents and knowledge corpus
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
@@ -134,3 +135,7 @@ La commande `knowledge index` construit un index local des sections du corpus fi
 ## Étape 17 — variantes de recherche
 
 `OPS_ASSIST_RETRIEVAL` choisit `vector`, `bm25` ou `hybrid` (défaut), qui fusionne les rangs par RRF. `OPS_ASSIST_RERANKER` choisit `none` (défaut), `keyword` hors ligne ou un modèle LiteLLM ; `OPS_ASSIST_RERANKER_API_BASE` définit son serveur facultatif. `knowledge eval` compare rappel@5 et MRR@5 sur les questions fournies avec le hachage hors ligne. Voir l’[atelier 17](ateliers/17-variantes-rag/README.md).
+
+## Étape 18 — graphe de dépendances
+
+La commande hors ligne `triage` inclut des indices pour les dépendances directes en alerte. Le coordinateur dispose de `get_dependencies` et de `search_knowledge` avec `expand=true` ; leurs résultats sont bornés et non fiables. `OPS_ASSIST_GRAPH_MAX_AGE_DAYS` fixe le seuil de péremption des relations (90 jours par défaut). Voir l’[atelier 18](ateliers/18-graphrag/README.md).

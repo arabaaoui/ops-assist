@@ -74,7 +74,7 @@ def _records(records: list, cap: int) -> tuple[list, bool]:
 def make_knowledge_tool():
     """Create a bounded read tool over the configured index."""
 
-    async def search_knowledge(query: str, k: int = 5) -> dict[str, Any]:
+    async def search_knowledge(query: str, k: int = 5, expand: bool = False) -> dict[str, Any]:
         """Search untrusted runbooks and postmortems; cite chunk IDs."""
         try:
             if not isinstance(query, str) or not query.strip() or len(query) > 2000:
@@ -95,6 +95,8 @@ def make_knowledge_tool():
                     reranker=configured_reranker(),
                 )
 
+            if not isinstance(expand, bool):
+                raise ObservationError("expand must be a boolean")
             rows = await _call("search_knowledge", search)
             result = {
                 "status": "ok",
@@ -110,6 +112,49 @@ def make_knowledge_tool():
                     for r in rows
                 ],
             }
+            if expand:
+                import re
+
+                from .knowledge.graph import GraphError, dependencies, service_names
+                from .knowledge.index import load_documents
+
+                try:
+                    matches = [
+                        s
+                        for s in service_names()
+                        if re.search(
+                            r"(?<![\w-])" + re.escape(s) + r"(?![\w-])", query, re.IGNORECASE
+                        )
+                    ]
+                    edges = []
+                    for service in matches[:5]:
+                        edges.extend(
+                            e for e in dependencies(service)["edges"] if e["type"] != "owned_by"
+                        )
+                    related = {e["to"] for e in edges}
+                    document_ids = {d["id"] for d in load_documents() if d["service"] in related}
+                    seen = {r["source"] for r in result["chunks"]}
+                    indexed = await _call(
+                        "search_knowledge",
+                        lambda: VectorIndex.load(StateStore(), configured_embedder()),
+                    )
+                    expanded = [
+                        c
+                        for c in indexed.chunks
+                        if c["id"].rsplit("#", 1)[0] in document_ids and c["id"] not in seen
+                    ][:8]
+                    result["expanded_chunks"] = [
+                        {
+                            "source": c["id"][:300],
+                            "title": c["title"][:300],
+                            "updated": c["updated"][:40],
+                            "excerpt": c["text"][:800],
+                        }
+                        for c in expanded
+                    ]
+                    result["expansion_edges"] = edges[:50]
+                except GraphError as exc:
+                    result["expansion_error"] = str(exc)[:300]
             if rows.rerank_error:
                 result.update(reranked=False, rerank_error=rows.rerank_error)
             return result
@@ -117,6 +162,28 @@ def make_knowledge_tool():
             return _failure("search_knowledge", e)
 
     return search_knowledge
+
+
+def make_graph_tool():
+    """Create the coordinator's bounded graph read tool."""
+
+    async def get_dependencies(
+        service: str, direction: str = "downstream", depth: int = 1
+    ) -> dict[str, Any]:
+        """Read untrusted dependencies with their provenance and freshness."""
+        try:
+            from .knowledge.graph import dependencies
+
+            return {
+                "status": "ok",
+                **await _call("get_dependencies", dependencies, service, direction, depth),
+            }
+        except ValueError as e:
+            return {"status": "error", "error": str(e)[:1000]}
+        except Exception as e:  # noqa: BLE001
+            return _failure("get_dependencies", e)
+
+    return get_dependencies
 
 
 def make_tools(source: ObservationSource) -> list[Callable[..., Any]]:
