@@ -18,6 +18,7 @@ from .config import Settings, load_settings
 from .models import build_model
 from .observability import ObservationSource, source_from_env
 from .report import IncidentReport
+from .security import SecurityBoundary, make_rollback_tool
 from .tools import make_tools, tool_timeout
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,12 @@ def load_skills():
     return skills
 
 
-def build_agent(settings: Settings | None = None, source: ObservationSource | None = None) -> Agent:
+def build_agent(
+    settings: Settings | None = None,
+    source: ObservationSource | None = None,
+    *,
+    allow_writes: bool | None = None,
+) -> Agent:
     """Assemble the agent from settings and an observation source (replay by default)."""
     settings = settings or load_settings()
     topology = os.environ.get("OPS_ASSIST_TOPOLOGY", "single")
@@ -58,6 +64,7 @@ def build_agent(settings: Settings | None = None, source: ObservationSource | No
         raise ValueError("MCP tools require an environment-configured source")
     source = source or source_from_env(settings.incident)
     tools = make_tools(source)
+    security = SecurityBoundary(allow_writes=allow_writes)
     if mode == "mcp":
         inherited = (
             "OPS_ASSIST_SOURCE",
@@ -95,6 +102,9 @@ def build_agent(settings: Settings | None = None, source: ObservationSource | No
             )
             expert = Agent(
                 name=name,
+                before_tool_callback=security.before,
+                after_tool_callback=security.after,
+                on_tool_error_callback=security.error,
                 description=f"Gather evidence using {', '.join(names)}; return sourced findings.",
                 model=build_model(settings),
                 instruction=(
@@ -111,10 +121,15 @@ def build_agent(settings: Settings | None = None, source: ObservationSource | No
         tools = [by_name["recall_past_incidents"]]
     elif mode == "mcp":
         tools = [mcp_tools(), next(t for t in tools if t.__name__ == "recall_past_incidents")]
+    if security.allow_writes:
+        tools.append(make_rollback_tool(source, boundary=security))
     tools.append(SkillToolset(skills=load_skills()))
     logger.info("ops-assist: %s source=%s", settings.describe(), source.name)
     return Agent(
         name="ops_assist",
+        before_tool_callback=security.before,
+        after_tool_callback=security.after,
+        on_tool_error_callback=security.error,
         description="Investigates production incidents from alerts, metrics, logs and changes.",
         model=build_model(settings),
         instruction=INSTRUCTION

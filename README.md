@@ -5,15 +5,14 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 12.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 13.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
 
 ## Principles
 
-- **Read-only by default.** One write action (rolling back a deployment) arrives later, and only ever
-  runs after a human confirms it, against the replay or the demo stack, never a real environment.
+- **Read-only by default.** Rollback requires explicit enablement and human confirmation. Replay changes simulated state; live connectors always refuse, and demo requires an injected client.
 - **Provider-agnostic.** Models go through LiteLLM; the provider is configuration, with an ordered
   fallback chain (ADK `FallbackModel`, experimental): the next model is tried on HTTP 429, 500,
   502, 503 or 504 before any output, never on a malformed request, a connection error or a
@@ -62,7 +61,7 @@ uv run ops-assist investigate "Why is payment slow?"
 
 The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md).
 
 ## Layout
 
@@ -105,3 +104,7 @@ The agent loads the bundled `latency` and `errors-5xx` skills at startup in both
 ## Step 12 — roles / rôles
 
 `OPS_ASSIST_TOPOLOGY=experts uv run ops-assist investigate "Why is payment slow?"` delegates alerts and metrics to `metrics_expert`, logs and changes to `logs_expert`; the coordinator recalls memory and produces the final report. The default `single` preserves existing scripted workflows. Both topologies support in-process and MCP tools and the configured provider and fallback chain. Run `OPS_ASSIST_TEST_ASYNC_TICK=1 uv run pytest -q tests/test_roles.py` offline.
+
+## Step 13 — security
+
+ADK callbacks classify tools and enforce read-only by default. Writes require a human channel (the CLI prompt or ADK web UI); The A2A and MCP servers never expose a write. An agent consuming MCP observation tools can still offer confirmed rollback through the CLI or ADK web UI. `OPS_ASSIST_ALLOW_WRITES=1 uv run ops-assist investigate "Why?"` exposes rollback: the CLI displays its arguments and asks for `yes` before execution. Replay changes simulated state only; live always refuses, and demo is unavailable without an injected client. Per-invocation limits are `OPS_ASSIST_MAX_TOOL_CALLS` (100) and `OPS_ASSIST_MAX_DELEGATIONS` (10). `OPS_ASSIST_STATE_DIR` selects the private state root (default `~/.local/state/ops-assist/`); `OPS_ASSIST_AUDIT_FILE` selects a plain file name within that root (default `audit.jsonl`), never a path. A durable `pending` audit entry precedes a confirmed write; redaction is heuristic. The [workshop](ateliers/13-securite/README.md) uses scripted offline tests.

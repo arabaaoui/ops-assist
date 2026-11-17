@@ -1,6 +1,7 @@
 """Expose the investigator through the ADK A2A application."""
 
 import hmac
+import logging
 import os
 
 from a2a.types import (
@@ -18,6 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from .agent import build_agent
+from .security import SecurityBoundary
 
 
 def build_card(port: int = 8000, *, token: str | None = None) -> AgentCard:
@@ -82,7 +84,40 @@ class BearerMiddleware(BaseHTTPMiddleware):
 def create_app(port: int = 8000, agent=None):
     """Create the A2A ASGI application; allow injection for offline tests."""
     token = os.environ.get("OPS_ASSIST_A2A_TOKEN") or None
-    app = to_a2a(agent or build_agent(), agent_card=build_card(port, token=token))
+    if "OPS_ASSIST_ALLOW_WRITES" in os.environ:
+        logging.getLogger(__name__).warning("A2A always runs read-only; writes are disabled")
+    agent = agent or build_agent(allow_writes=False)
+    # Apply the boundary to injected agents too; a remote response is not approval.
+    boundary = SecurityBoundary(allow_writes=False)
+
+    def protect(candidate):
+        callback = getattr(candidate, "before_tool_callback", None)
+        existing = getattr(callback, "__self__", None)
+        if isinstance(existing, SecurityBoundary):
+            existing.allow_writes = False
+        else:
+            candidate.before_tool_callback = [
+                boundary.before,
+                *candidate.canonical_before_tool_callbacks,
+            ]
+            candidate.after_tool_callback = [
+                boundary.after,
+                *candidate.canonical_after_tool_callbacks,
+            ]
+            candidate.on_tool_error_callback = [
+                boundary.error,
+                *candidate.canonical_on_tool_error_callbacks,
+            ]
+        candidate.tools = [
+            tool
+            for tool in candidate.tools
+            if getattr(tool, "name", getattr(tool, "__name__", None)) != "rollback_deployment"
+        ]
+        for child in candidate.sub_agents:
+            protect(child)
+
+    protect(agent)
+    app = to_a2a(agent, agent_card=build_card(port, token=token))
     if token:
         app.add_middleware(BearerMiddleware, token=token)
     return app

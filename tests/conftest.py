@@ -23,6 +23,7 @@ def isolated_settings(monkeypatch, tmp_path):
         if key.startswith("OPS_ASSIST_") and key != "OPS_ASSIST_TEST_ASYNC_TICK":
             monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("OPS_ASSIST_MEMORY_DIR", str(tmp_path / "memory"))
+    monkeypatch.setenv("OPS_ASSIST_STATE_DIR", str(tmp_path / "state"))
 
 
 @pytest.fixture(autouse=True)

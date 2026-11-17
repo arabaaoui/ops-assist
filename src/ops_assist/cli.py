@@ -149,6 +149,18 @@ def main(argv: list[str] | None = None) -> int:
                 kwargs["session_id"] = args.session
             if args.show_context:
                 kwargs["show_context"] = True
+            if os.environ.get("OPS_ASSIST_ALLOW_WRITES") == "1":
+
+                def confirm_tool(name, tool_args):
+                    print(
+                        f"Confirmation required: {name} {json.dumps(tool_args, ensure_ascii=False)}"
+                    )
+                    try:
+                        return input("Type yes to approve: ").strip() == "yes"
+                    except EOFError:
+                        return False
+
+                kwargs["confirm_tool"] = confirm_tool
             report, trace = investigate(args.question, settings=settings, **kwargs)
             print(report.model_dump_json(indent=2))
             for call in trace:

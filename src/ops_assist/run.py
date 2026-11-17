@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,6 +52,7 @@ def investigate(
     model: BaseLlm | None = None,
     session_id: str | None = None,
     show_context: bool = False,
+    confirm_tool: Callable[[str, dict[str, Any]], bool] | None = None,
 ) -> tuple[IncidentReport, InvestigationTrace]:
     """Run an investigation in a new or resumed session and validate its report."""
     settings = settings or load_settings()
@@ -118,16 +120,36 @@ def investigate(
             ],
         )
         current_report = None
-        async for event in runner.run_async(
-            user_id="user", session_id=session.id, new_message=message
-        ):
-            if event.actions and "report" in event.actions.state_delta:
-                current_report = event.actions.state_delta["report"]
-            for part in event.content.parts if event.content and event.content.parts else []:
-                if part.function_call:
-                    trace.append(
-                        ToolCallTrace(part.function_call.name, dict(part.function_call.args or {}))
+        while True:
+            confirmations = []
+            async for event in runner.run_async(
+                user_id="user", session_id=session.id, new_message=message
+            ):
+                if event.actions and "report" in event.actions.state_delta:
+                    current_report = event.actions.state_delta["report"]
+                for part in event.content.parts if event.content and event.content.parts else []:
+                    if part.function_call:
+                        call = part.function_call
+                        if call.name == "adk_request_confirmation":
+                            confirmations.append(call)
+                        else:
+                            trace.append(ToolCallTrace(call.name, dict(call.args or {})))
+            if not confirmations:
+                break
+            if confirm_tool is None:
+                raise ValueError("Tool confirmation required; use an interactive client")
+            parts = []
+            for call in confirmations:
+                original = call.args["originalFunctionCall"]
+                approved = confirm_tool(original["name"], original.get("args", {}))
+                parts.append(
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            id=call.id, name=call.name, response={"confirmed": approved}
+                        )
                     )
+                )
+            message = types.Content(role="user", parts=parts)
         if current_report is None:
             raise ValueError("agent returned no report")
         report = IncidentReport.model_validate(current_report)

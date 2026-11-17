@@ -77,7 +77,9 @@ class EnvelopeModel(BaseLlm):
         yield LlmResponse(content=types.Content(role="model", parts=[part]))
 
 
-def test_registration_is_allowlisted_and_refuses_missing(monkeypatch):
+def test_registration_is_allowlisted_and_refuses_missing(monkeypatch, caplog):
+    monkeypatch.setenv("OPS_ASSIST_ALLOW_WRITES", "1")
+    monkeypatch.setattr(mcp_server.logging, "basicConfig", lambda **kwargs: None)
     assert MCP_EXPOSED_TOOLS == ("get_alerts", "get_metric", "get_logs", "get_changes")
     registered = []
 
@@ -101,6 +103,7 @@ def test_registration_is_allowlisted_and_refuses_missing(monkeypatch):
     monkeypatch.setattr(mcp_server, "make_tools", lambda source: [write_tool, *reversed(tools)])
     mcp_server.serve()
     assert tuple(registered) == MCP_EXPOSED_TOOLS
+    assert "MCP always runs read-only" in caplog.text
     monkeypatch.setattr(mcp_server, "make_tools", lambda source: [write_tool])
     with pytest.raises(ValueError, match="missing tools.*get_alerts"):
         mcp_server.serve()

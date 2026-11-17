@@ -5,16 +5,14 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 12.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 13.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
 
 ## Principes
 
-- **Lecture seule par défaut.** Une seule action d'écriture (le retour arrière d'un déploiement)
-  arrive plus tard, et ne s'exécute qu'après confirmation humaine, sur le rejeu ou la pile de
-  démonstration, jamais sur un environnement réel.
+- **Lecture seule par défaut.** Le retour arrière exige une activation explicite et une confirmation humaine ; il agit sur l'état simulé du rejeu. Le mode réel le refuse et la démonstration exige un client injecté.
 - **Agnostique du fournisseur.** Les modèles passent par LiteLLM ; le fournisseur est une
   configuration, avec une chaîne de repli ordonnée (`FallbackModel` d'ADK, expérimental) : le
   modèle suivant est essayé sur HTTP 429, 500, 502, 503 ou 504 avant toute sortie, jamais sur une
@@ -63,7 +61,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 Les trois premières commandes fonctionnent sans modèle. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — sécurité](ateliers/13-securite/README.md).
 
 ## Licence
 
@@ -90,3 +88,7 @@ L’agent charge les skills intégrés `latency` et `errors-5xx` au démarrage d
 ## Étape 12 — rôles et frontières
 
 `OPS_ASSIST_TOPOLOGY=experts uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"` délègue alertes et métriques à `metrics_expert`, journaux et changements à `logs_expert` ; le coordinateur rappelle la mémoire et produit le rapport final. Le défaut `single` préserve les scénarios scriptés existants. Les deux topologies prennent en charge les outils en processus ou MCP et le profil et sa chaîne de repli. Pour tester hors ligne : `OPS_ASSIST_TEST_ASYNC_TICK=1 uv run pytest -q tests/test_roles.py`.
+
+## Étape 13 — sécurité
+
+Les callbacks ADK classent les outils et imposent la lecture seule par défaut. Les écritures exigent un canal humain (confirmation dans la CLI ou l’interface ADK web) ; les serveurs A2A et MCP n’exposent jamais d’écriture. Un agent qui consulte des outils MCP peut toujours proposer le retour arrière confirmé dans la CLI ou l’interface ADK web. `OPS_ASSIST_ALLOW_WRITES=1 uv run ops-assist investigate "Pourquoi ?"` expose le retour arrière : la CLI affiche ses arguments et demande `yes` avant l'exécution. Le rejeu modifie uniquement un état simulé ; le mode réel refuse toujours, et la démonstration est indisponible sans client injecté. Les plafonds par invocation sont `OPS_ASSIST_MAX_TOOL_CALLS` (100) et `OPS_ASSIST_MAX_DELEGATIONS` (10). `OPS_ASSIST_STATE_DIR` choisit la racine privée (par défaut `~/.local/state/ops-assist/`) ; `OPS_ASSIST_AUDIT_FILE` choisit un simple nom de fichier dans cette racine (par défaut `audit.jsonl`), jamais un chemin. Une entrée `pending` durable précède toute écriture confirmée ; l'expurgation est heuristique. Sans modèle, l'[atelier 13](ateliers/13-securite/README.md) utilise les tests scriptés.
