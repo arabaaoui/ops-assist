@@ -35,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
     eval_run.add_argument("--repeat", type=int, default=1)
     eval_run.add_argument("--show-reports", action="store_true")
     eval_run.add_argument("--compare-tiers", action="store_true")
+    doctor = commands.add_parser("doctor", help="inspect local hardware offline")
+    doctor.add_argument("--json", action="store_true")
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -86,6 +88,27 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "doctor":
+            from .doctor import diagnose
+
+            result = diagnose()
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(f"CPU: {result['cpu']['count']} logical CPUs; {result['cpu']['model']}")
+                print(
+                    f"RAM total bytes: {result['ram']['total_bytes']}; "
+                    f"available bytes: {result['ram']['available_bytes']}"
+                )
+                print(
+                    f"GPU: {result['gpu']['name']}; total bytes: {result['gpu']['total_bytes']}; "
+                    f"free bytes: {result['gpu']['free_bytes']}"
+                )
+                print(
+                    f"Recommended profile: {result['advice']['profile']} — "
+                    f"{result['advice']['reason']}"
+                )
+            return 0
         if args.command == "feedback":
             from .feedback import collect, pairs
 

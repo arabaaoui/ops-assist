@@ -113,3 +113,7 @@ The coordinator always uses the main model chain. Experts use `fast_models` from
 ## Feedback and preference pairs
 
 The CLI stores validated, redacted feedback as private files in the confined state directory. The report hash identifies the canonical validated report before redaction. For CLI investigations, the stored report includes the incident and original question; explicit inputs can provide the same metadata in an envelope. Export pairs only distinct reports with opposite ratings for the same known incident and question, as JSONL on standard output. Redaction is heuristic, feedback is untrusted, and export performs no training or model call.
+
+## Offline hardware diagnosis
+
+`doctor` runs independently of model settings and agent tools. Linux probes read `/proc/cpuinfo` and `/proc/meminfo`; macOS uses bounded `sysctl` queries and identifies Apple Silicon as unified memory. Where available, bounded `nvidia-smi` queries report one GPU and its free memory. The command cannot discover every GPU type; macOS available memory is unknown. Probe errors are reported as unknown. Advice compares a 7B model at 0.6 GB per billion 4-bit weights plus 2 GB overhead against measured available memory; unknown or insufficient capacity recommends an API profile. The estimate is advisory, does not change settings and does not guarantee performance or fit. No agent tool, dependency, network call or environment variable is added. See [workshop 27](../ateliers/27-materiel/README.md).
