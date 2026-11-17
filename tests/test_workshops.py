@@ -266,3 +266,31 @@ def test_workshop_15_search_commands_use_vector_retrieval():
     assert commands
     assert all("OPS_ASSIST_RETRIEVAL=vector" in command for command in commands)
     assert "atelier 17" in readme and "hybride" in readme
+
+
+def test_tokens_all_counts_every_incident_and_context_offline(monkeypatch, tmp_path, capsys):
+    def deny(*args, **kwargs):
+        pytest.fail("network is forbidden")
+
+    monkeypatch.setattr(socket.socket, "connect", deny)
+    monkeypatch.setattr(socket.socket, "connect_ex", deny)
+    monkeypatch.setattr(socket, "create_connection", deny)
+    monkeypatch.setenv("OPS_ASSIST_INCIDENTS_DIR", str(tmp_path))
+    for name, content in [("alpha", "one"), ("beta", "two words")]:
+        folder = tmp_path / name
+        folder.mkdir()
+        (folder / "incident.json").write_text("{}")
+        (folder / "alerts.json").write_text(content)
+        (folder / "expected.json").write_text("excluded")
+    (tmp_path / "ignored").mkdir()
+    monkeypatch.setitem(litellm.model_cost, "test/window", {"max_input_tokens": 100})
+    monkeypatch.setattr(litellm, "token_counter", lambda **kw: len(kw["text"]))
+    assert cli.main(["tokens", "--all", "--model", "test/window"]) == 0
+    out = capsys.readouterr().out
+    assert out.index("Incident: alpha") < out.index("Incident: beta")
+    assert "5.00% of 100" in out and "11.00% of 100" in out
+    assert "excluded" not in out and "expected.json" not in out and "ignored" not in out
+    assert cli.main(["tokens", "--all", "--model", "unknown/model"]) == 0
+    assert capsys.readouterr().out.count("Context window: unknown") == 2
+    with pytest.raises(SystemExit):
+        cli.main(["tokens", "--all", "--incident", "alpha"])

@@ -32,7 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
-    tokens.add_argument("--incident")
+    selection = tokens.add_mutually_exclusive_group()
+    selection.add_argument("--incident")
+    selection.add_argument("--all", action="store_true", help="count every replay incident")
     tokens.add_argument("--model")
     ask = commands.add_parser("ask")
     ask.add_argument("question")
@@ -206,34 +208,40 @@ def main(argv: list[str] | None = None) -> int:
                     "OPS_ASSIST_MODELS override: required variables are not checked before calls."
                 )
         elif args.command == "tokens":
-            source = ReplaySource(args.incident or settings.incident)
+            from .observability.replay import OBSERVATION_FILES, list_incidents
+
+            incidents = list_incidents() if args.all else [args.incident or settings.incident]
             model = args.model or settings.models[0]
             # Explicitly select LiteLLM's packaged tokenizer: no Hugging Face or tiktoken downloads.
             tokenizer = {"type": "huggingface_tokenizer", "tokenizer": anthropic()}
             print(f"Model: {model}; tokenizer: LiteLLM bundled Anthropic (approximate)")
-            print(f"{'File':24} {'Characters':>12} {'Tokens':>10}")
-            total_chars = total_tokens = 0
-            from .observability.replay import OBSERVATION_FILES
-
-            for name in sorted(OBSERVATION_FILES):
-                path = source.dir / name
-                if not path.exists() and not path.is_symlink():
-                    continue
-                text = source._read(name)
-                count = litellm.token_counter(model=model, text=text, custom_tokenizer=tokenizer)
-                total_chars += len(text)
-                total_tokens += count
-                print(f"{path.name:24} {len(text):12} {count:10}")
-            print(f"{'TOTAL':24} {total_chars:12} {total_tokens:10}")
             info = litellm.model_cost.get(model, {})
             window = info.get("max_input_tokens")
-            if window:
-                print(
-                    f"Context window: {total_tokens / window:.2%} of {window} "
-                    "input tokens (approximate)"
-                )
-            else:
-                print("Context window: unknown")
+            for incident in incidents:
+                source = ReplaySource(incident)
+                if args.all:
+                    print(f"Incident: {incident}")
+                print(f"{'File':24} {'Characters':>12} {'Tokens':>10}")
+                total_chars = total_tokens = 0
+                for name in sorted(OBSERVATION_FILES):
+                    path = source.dir / name
+                    if not path.exists() and not path.is_symlink():
+                        continue
+                    text = source._read(name)
+                    count = litellm.token_counter(
+                        model=model, text=text, custom_tokenizer=tokenizer
+                    )
+                    total_chars += len(text)
+                    total_tokens += count
+                    print(f"{path.name:24} {len(text):12} {count:10}")
+                print(f"{'TOTAL':24} {total_chars:12} {total_tokens:10}")
+                if isinstance(window, (int, float)) and window > 0:
+                    print(
+                        f"Context window: {total_tokens / window:.2%} of {window} "
+                        "input tokens (approximate)"
+                    )
+                else:
+                    print("Context window: unknown")
         elif args.command == "triage":
             print(
                 pretriage(ReplaySource(args.incident or settings.incident)).model_dump_json(
