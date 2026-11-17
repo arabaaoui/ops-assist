@@ -16,12 +16,13 @@ from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.genai import types
 from litellm.rust_bridge.tokenizer import anthropic
 
+from . import tracing
 from .agent import build_agent
 from .config import Settings, load_settings
 from .memory import SECRET, remember
 from .observability import ObservationSource, source_from_env
 from .report import CHUNK_ID, IncidentReport, check_observation_support, knowledge_citations
-from .security import _redact
+from .security import TOOL_ACCESS, _redact
 from .triage import pretriage
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ class InvestigationTrace(list[ToolCallTrace]):
             )
 
 
-def investigate(
+def _investigate(
     question: str,
     settings: Settings | None = None,
     source: ObservationSource | None = None,
@@ -147,9 +148,16 @@ def investigate(
     trace = InvestigationTrace()
 
     pending_counts: dict[str, int | None] = {}
+    model_spans = {}
+    tool_spans = {}
 
     def measure_before(callback_context, llm_request):
         name = callback_context.agent_name
+        model_spans[name] = tracing.start(
+            "model_call", {"agent": name, "model": str(llm_request.model or "unknown")[:200]}
+        )
+        if not (show_context or measure_usage):
+            return None
         # Clear the previous request before attempting to measure this one.
         pending_counts[name] = None
         try:
@@ -164,6 +172,17 @@ def investigate(
         return None
 
     def measure_after(callback_context, llm_response):
+        usage = llm_response.usage_metadata
+        tracing.finish(
+            model_spans.pop(callback_context.agent_name, None),
+            {
+                "model": str(llm_response.model_version)[:200]
+                if llm_response.model_version
+                else None,
+                "input_tokens": usage.prompt_token_count if usage else None,
+                "output_tokens": usage.candidates_token_count if usage else None,
+            },
+        )
         prompt_count = pending_counts.pop(callback_context.agent_name, None)
         usage = llm_response.usage_metadata
         if len(trace.usage) < MAX_TRACE_CALLS:
@@ -198,10 +217,56 @@ def investigate(
                 logger.exception("Response measurement failed")
         return None
 
+    def wrap_tool_callbacks(candidate):
+        before, after, on_tool_error = (
+            candidate.before_tool_callback,
+            candidate.after_tool_callback,
+            candidate.on_tool_error_callback,
+        )
+
+        def on_before(tool, args, tool_context):
+            span = tracing.start(
+                "tool_call", {"tool": tool.name if tool.name in TOOL_ACCESS else "unknown"}
+            )
+            tool_spans[id(tool_context)] = span
+            try:
+                result = before(tool, args, tool_context)
+            except BaseException:
+                tracing.finish(tool_spans.pop(id(tool_context), None), {"outcome": "error"})
+                raise
+            if result is not None:
+                tracing.finish(tool_spans.pop(id(tool_context), None), {"outcome": "denied"})
+            return result
+
+        def on_after(tool, args, tool_context, tool_response):
+            outcome = "ok"
+            if isinstance(tool_response, dict):
+                status = tool_response.get("status")
+                if status == "denied":
+                    outcome = "denied"
+                elif status in ("error", "failed") or tool_response.get("error"):
+                    outcome = "error"
+            try:
+                return after(tool, args, tool_context, tool_response)
+            finally:
+                tracing.finish(tool_spans.pop(id(tool_context), None), {"outcome": outcome})
+
+        def on_error(tool, args, tool_context, error):
+            try:
+                return on_tool_error(tool, args, tool_context, error)
+            finally:
+                tracing.finish(tool_spans.pop(id(tool_context), None), {"outcome": "error"})
+
+        candidate.before_tool_callback = on_before
+        candidate.after_tool_callback = on_after
+        candidate.on_tool_error_callback = on_error
+
     for candidate in [agent, *agent.sub_agents]:
+        if os.environ.get("OPS_ASSIST_OTEL") == "1":
+            wrap_tool_callbacks(candidate)
         if settings.deterministic:
             candidate.generate_content_config = types.GenerateContentConfig(temperature=0, seed=42)
-        if show_context or measure_usage:
+        if show_context or measure_usage or os.environ.get("OPS_ASSIST_OTEL") == "1":
             candidate.before_model_callback = measure_before
         candidate.after_model_callback = measure_after
     if model is not None:
@@ -323,6 +388,15 @@ def investigate(
                     ) from exc
             return await run()
         finally:
+            for span in [*model_spans.values(), *tool_spans.values()]:
+                tracing.finish(span, {"outcome": "error"})
             await runner.close()
 
     return asyncio.run(run_and_close())
+
+
+def investigate(*args, **kwargs):
+    """Run and optionally trace a complete investigation."""
+    os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+    with tracing.investigation():
+        return _investigate(*args, **kwargs)
