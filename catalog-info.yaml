@@ -1,0 +1,78 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ops-assist
+  description: Fictional incident investigation agent
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/owner-to-be-assigned
+  agent:
+    purpose: Investigate fictional incidents and produce evidence-based reports.
+    tools:
+    - name: get_alerts
+      access: read
+    - name: get_metric
+      access: read
+    - name: get_logs
+      access: read
+    - name: get_changes
+      access: read
+    - name: recall_past_incidents
+      access: read
+    - name: search_knowledge
+      access: read
+    - name: get_dependencies
+      access: read
+    - name: list_skills
+      access: read
+    - name: load_skill
+      access: read
+    - name: load_skill_resource
+      access: read
+    - name: run_skill_script
+      access: write
+    - name: metrics_expert
+      access: read
+    - name: logs_expert
+      access: read
+    - name: rollback_deployment
+      access: write
+    rights:
+    - Read fictional observations, knowledge and skills.
+    - Delegate observations to experts.
+    - Rollback requires explicit enablement and human confirmation; live sources refuse.
+    - Unknown tools are treated as writes; skill scripts have no bundled scripts.
+    models_by_profile:
+      local:
+      - ollama_chat/qwen3:8b
+      gemini: &id001
+      - gemini/gemini-2.5-flash
+      - gemini/gemini-2.5-flash-lite
+      api: *id001
+      openai:
+      - openai/gpt-4o-mini
+      anthropic:
+      - anthropic/claude-haiku-4-5
+      mistral:
+      - mistral/mistral-small-latest
+      openrouter:
+      - openrouter/openai/gpt-4o-mini
+      mixed:
+      - gemini/gemini-2.5-flash-lite
+      - openai/gpt-4o-mini
+      - anthropic/claude-haiku-4-5
+      gateway:
+      - openai/ops-primary
+      vertex:
+      - vertex_ai/gemini-3.1-flash-lite
+      bedrock:
+      - bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0
+      azure:
+      - azure/gpt-4o
+    monthly_budget:
+      amount: 100
+      currency: USD
+      enforcement: informational; not enforced
+    evaluations: src/ops_assist/evals/threshold.yaml
+    behavior_changelog: BEHAVIOR_CHANGELOG.md
