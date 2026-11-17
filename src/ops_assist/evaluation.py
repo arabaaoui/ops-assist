@@ -6,6 +6,9 @@ import re
 import secrets
 import time
 from dataclasses import replace
+from pathlib import Path
+
+import yaml
 
 from .evaluation_dataset import DATA, load_dataset
 from .fingerprint import fingerprint
@@ -155,6 +158,88 @@ def score_report(report, expected: dict) -> dict[str, bool]:
     }
 
 
+def pass_rates(rows: list[dict]) -> tuple[float, dict[str, float]]:
+    """Compute weighted overall and per-incident rates, including failures."""
+    if not rows:
+        raise ValueError("no evaluation results")
+    incidents = {}
+    for row in rows:
+        incidents.setdefault(row["incident"], []).append(row["passed"])
+    return sum(row["passed"] for row in rows) / len(rows), {
+        incident: sum(values) / len(values) for incident, values in incidents.items()
+    }
+
+
+def load_threshold(path: Path | None = None) -> dict:
+    """Load the release policy packaged with the application."""
+    path = path or Path(__file__).parent / "evals" / "threshold.yaml"
+    try:
+        policy = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError("invalid evaluation threshold") from exc
+    if (
+        not isinstance(policy, dict)
+        or set(policy) != {"value", "dataset_version", "justification"}
+        or isinstance(policy["value"], bool)
+        or not isinstance(policy["value"], (int, float))
+        or not 0 <= policy["value"] <= 1
+        or not isinstance(policy["dataset_version"], str)
+        or not policy["dataset_version"].strip()
+        or not isinstance(policy["justification"], str)
+        or not policy["justification"].strip()
+    ):
+        raise ValueError("invalid evaluation threshold")
+    return policy
+
+
+def gate(result: dict, policy: dict) -> bool:
+    """Require both the approved dataset version and the minimum overall rate."""
+    return (
+        result["dataset_version"] == policy["dataset_version"]
+        and result["pass_rate"] >= policy["value"]
+    )
+
+
+def check_reports(directory: Path) -> dict:
+    """Score JSON report envelopes or reports named after dataset incident IDs."""
+    dataset = load_dataset()
+    cases = {case["id"] for case in dataset["incidents"]}
+    files = sorted(directory.glob("*.json")) if directory.is_dir() else []
+    if not files:
+        raise ValueError("report directory contains no JSON reports")
+    rows = []
+    for path in files:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            incident = raw.get("incident_id", path.stem) if isinstance(raw, dict) else path.stem
+            if not isinstance(incident, str) or incident not in cases:
+                raise ValueError("unknown incident")
+            report = raw.get("report", raw) if isinstance(raw, dict) else raw
+            expected = json.loads((DATA / "incidents" / incident / "expected.json").read_text())
+            checks = score_report(report, expected)
+            error = None
+        except (ValueError, OSError, UnicodeError):
+            incident = path.name
+            checks = dict.fromkeys(("valid", "status", "root_cause", "sources", "forbidden"), False)
+            error = "invalid report or unknown incident"
+        rows.append(
+            {
+                "incident": incident,
+                "file": path.name,
+                "checks": checks,
+                "passed": all(checks.values()),
+                "error": error,
+            }
+        )
+    overall, incidents = pass_rates(rows)
+    return {
+        "dataset_version": dataset["version"],
+        "pass_rate": overall,
+        "incident_pass_rates": incidents,
+        "results": rows,
+    }
+
+
 def _check_tools_mode() -> None:
     if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
         raise ValueError("Evaluation does not support OPS_ASSIST_TOOLS=mcp; use inprocess")
@@ -243,6 +328,7 @@ def _evaluate(settings, repeat, *, model=None, compare=False):
     for name, tier_settings in tiers.items():
         total = totals[name]
         rows = total["rows"]
+        overall, incidents = pass_rates(rows)
         result = {
             "fingerprint": fingerprint(tier_settings),
             "dataset_version": dataset["version"],
@@ -250,7 +336,8 @@ def _evaluate(settings, repeat, *, model=None, compare=False):
             "profile": settings.profile,
             "models": settings.models,
             "repeat": repeat,
-            "pass_rate": sum(row["passed"] for row in rows) / len(rows),
+            "pass_rate": overall,
+            "incident_pass_rates": incidents,
             "results": rows,
         }
         if compare:

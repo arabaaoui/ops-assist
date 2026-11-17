@@ -41,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     eval_cost.add_argument("--profile")
     eval_cost.add_argument("--json", action="store_true")
     eval_run = eval_commands.add_parser("run")
+    eval_check = eval_commands.add_parser("check-reports")
+    eval_check.add_argument("directory")
+    eval_run.add_argument("--gate", action="store_true")
     eval_run.add_argument("--profile")
     eval_run.add_argument("--repeat", type=int, default=1)
     eval_run.add_argument("--show-reports", action="store_true")
@@ -232,8 +235,26 @@ def main(argv: list[str] | None = None) -> int:
                     for note in sorted({note for row in rows for note in row["notes"]}):
                         print(f"Note: {note}")
                 return 0
+            if args.eval_command == "check-reports":
+                from .evaluation import check_reports
+
+                result = check_reports(Path(args.directory))
+                for row in result["results"]:
+                    print(f"{row['file']}: {'PASS' if row['passed'] else 'FAIL'}")
+                for incident, rate in result["incident_pass_rates"].items():
+                    print(f"{incident}: {rate:.1%}")
+                print(f"Pass rate: {result['pass_rate']:.1%}")
+                return 0 if all(row["passed"] for row in result["results"]) else 1
             if args.eval_command == "run":
-                from .evaluation import _check_tools_mode, evaluate, evaluate_tiers
+                from .evaluation import (
+                    _check_tools_mode,
+                    evaluate,
+                    evaluate_tiers,
+                    gate,
+                    load_threshold,
+                )
+
+                policy = load_threshold() if args.gate else None
 
                 _check_tools_mode()
 
@@ -259,10 +280,16 @@ def main(argv: list[str] | None = None) -> int:
                             f"unknown calls={result['unknown_calls']}) "
                             f"duration={result['duration_seconds']:.2f}s"
                         )
+                        for incident, rate in result["incident_pass_rates"].items():
+                            print(f"  {incident}: {rate:.1%}")
                         print(f"Result: {path}")
                         if args.show_reports:
                             print(json.dumps(result["results"], ensure_ascii=False, indent=2))
-                    return 0
+                    return (
+                        0
+                        if policy is None or all(gate(r, policy) for r, _ in results.values())
+                        else 1
+                    )
                 result, path = evaluate(settings, args.repeat)
                 print("Incident                 Run  Valid Status Root Sources Forbidden Result")
                 for row in result["results"]:
@@ -277,9 +304,16 @@ def main(argv: list[str] | None = None) -> int:
                                 indent=2,
                             )
                         )
+                for incident, rate in result.get("incident_pass_rates", {}).items():
+                    print(f"{incident}: {rate:.1%}")
                 print(f"Pass rate: {result['pass_rate']:.1%}")
                 print(f"Result: {path}")
-                return 0
+                if policy is not None:
+                    print(
+                        f"Gate: {'PASS' if gate(result, policy) else 'FAIL'} "
+                        f"(threshold {policy['value']:.1%}, dataset {policy['dataset_version']})"
+                    )
+                return 0 if policy is None or gate(result, policy) else 1
             dataset = load_dataset()
             print(f"Dataset version: {dataset['version']}")
             for case in dataset["incidents"]:

@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 32.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 33.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: almost every chapter adds one
 capability, tagged `etape-NN`. Chapters 1 to 4 match steps 1 to 4; chapter 5 (the harness) has no step of
@@ -54,7 +54,7 @@ Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
 ## CLI and workshops
 
-`ops-assist eval list` lists the versioned incident dataset offline. `ops-assist eval run [--profile P] [--repeat N] [--show-reports] [--compare-tiers]` evaluates replay investigations and stores results in the state directory.
+`ops-assist eval list` lists the versioned incident dataset offline. `ops-assist eval run [--profile P] [--repeat N] [--show-reports] [--compare-tiers] [--gate]` evaluates replay investigations and stores results in the state directory.
 
 ```bash
 uv run ops-assist eval cost --json
@@ -83,7 +83,7 @@ uv run ops-assist investigate "Why is payment slow?" --show-context
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` and `validate` start without a model; an A2A investigation still requires one. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md), [32 — AIDLC](ateliers/32-aidlc/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md), [16 — RAG](ateliers/16-rag/README.md), [17 — variantes du RAG](ateliers/17-variantes-rag/README.md), [18 — GraphRAG](ateliers/18-graphrag/README.md), [19 — RAG agentique](ateliers/19-rag-agentique/README.md), [20 — base vivante](ateliers/20-base-vivante/README.md), [21 — données](ateliers/21-donnees/README.md), [22 — Transformers](ateliers/22-transformers/README.md), [23 — changer un modèle](ateliers/23-changer-un-modele/README.md), [24 — LoRA](ateliers/24-lora/README.md), [25 — distillation](ateliers/25-distillation/README.md), [26 — renforcement](ateliers/26-renforcement/README.md), [27 — matériel](ateliers/27-materiel/README.md), [28 — CUDA](ateliers/28-cuda/README.md), [29 — inférence](ateliers/29-inference/README.md), [30 — clouds](ateliers/30-clouds/README.md), [31 — coûts](ateliers/31-couts/README.md), [32 — AIDLC](ateliers/32-aidlc/README.md), [33 — évaluations](ateliers/33-evaluations/README.md).
 
 ## Layout
 
@@ -94,6 +94,7 @@ src/ops_assist/
   fingerprint.py      behaviour build identifier
   report.py, triage.py  report validation and preliminary triage
   evaluation.py       incident evaluation and scoring
+  evals/              versioned release threshold
   cost.py             offline scripted cost comparison
   tools.py, executor.py  tools and bounded execution
   security.py         permissions, confirmation and audit
@@ -217,3 +218,7 @@ Cost scenarios mark a missing distinct fast tier as `n/a` (JSON `null` with a re
 ## Step 32 — AIDLC
 
 `ops-assist profile` displays the resolved configuration fingerprint; report envelopes and evaluation results retain it. See [workshop 32](ateliers/32-aidlc/README.md) and the behaviour changelog. No new configuration is required.
+
+## Step 33 — Evaluations
+
+`eval run --repeat N --gate` reports per-incident and overall rates and applies the versioned policy in `src/ops_assist/evals/threshold.yaml`. `eval check-reports DIR` scores saved JSON reports offline and fails if any report fails. See [workshop 33](ateliers/33-evaluations/README.md). No new configuration is required.

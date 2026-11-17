@@ -102,6 +102,7 @@ def test_scripted_models_evaluate_all_cases_and_persist(monkeypatch, tmp_path):
     assert perfect["fingerprint"] == fingerprint(load_settings({}))
     assert json.loads(path.read_text())["fingerprint"] == perfect["fingerprint"]
     assert len(perfect["results"]) == 12 and perfect["pass_rate"] == 1
+    assert perfect["incident_pass_rates"] == dict.fromkeys(CASES, 1.0)
     assert json.loads(path.read_text()) == perfect
     assert all(r["report"] and r["error"] is None for r in perfect["results"])
     wrong, other = evaluate(load_settings(env={}), model=ScriptedEvaluation(variant="wrong"))
@@ -298,3 +299,95 @@ def test_forbidden_phrase_negation_window(text, affirmed):
     from ops_assist.evaluation import _forbidden_affirmed
 
     assert _forbidden_affirmed(text, "database failure") is affirmed
+
+
+def test_pass_rates_weight_all_repetitions():
+    from ops_assist.evaluation import pass_rates
+
+    overall, rates = pass_rates(
+        [
+            {"incident": "a", "passed": True},
+            {"incident": "a", "passed": False},
+            {"incident": "b", "passed": True},
+        ]
+    )
+    assert overall == 2 / 3 and rates == {"a": 0.5, "b": 1}
+    with pytest.raises(ValueError):
+        pass_rates([])
+
+
+def test_release_gate_and_policy(tmp_path):
+    from ops_assist.evaluation import gate, load_threshold
+
+    policy = load_threshold()
+    assert policy["dataset_version"] == "1.1.0" and policy["justification"].strip()
+    result = {"dataset_version": "1.1.0", "pass_rate": policy["value"]}
+    assert gate(result, policy)
+    assert not gate({**result, "pass_rate": policy["value"] - 0.01}, policy)
+    assert not gate({**result, "dataset_version": "9.0.0"}, policy)
+    path = tmp_path / "policy.yaml"
+    path.write_text("value: 2\ndataset_version: 1.1.0\njustification: why\n")
+    with pytest.raises(ValueError, match="threshold"):
+        load_threshold(path)
+
+
+def test_cli_gate_and_report_checks(monkeypatch, tmp_path, capsys):
+    from pathlib import Path
+
+    from ops_assist.evaluation import check_reports
+
+    fixtures = Path(__file__).parent / "fixtures/evaluation"
+    monkeypatch.setattr("ops_assist.evaluation.investigate", lambda *a, **k: pytest.fail("online"))
+    assert cli.main(["eval", "check-reports", str(fixtures / "passing")]) == 0
+    assert "100.0%" in capsys.readouterr().out
+    assert cli.main(["eval", "check-reports", str(fixtures / "failing")]) == 1
+    assert "FAIL" in capsys.readouterr().out
+    assert cli.main(["eval", "check-reports", str(tmp_path)]) == 1
+    (tmp_path / "envelope.json").write_text(
+        json.dumps({"incident_id": "payment-latency", "report": report_for("payment-latency")})
+    )
+    assert check_reports(tmp_path)["pass_rate"] == 1
+    (tmp_path / "invalid.json").write_text("{")
+    assert check_reports(tmp_path)["pass_rate"] == 0.5
+    (tmp_path / "unknown.json").write_text('{"incident_id":"unknown"}')
+    assert check_reports(tmp_path)["pass_rate"] == 1 / 3
+
+    def fake(settings, repeat):
+        return {
+            "dataset_version": "1.1.0",
+            "pass_rate": fake.rate,
+            "results": [],
+            "incident_pass_rates": {},
+        }, tmp_path / "result"
+
+    fake.rate = 0.8
+    monkeypatch.setattr("ops_assist.evaluation.evaluate", fake)
+    assert cli.main(["eval", "run", "--gate"]) == 0
+    fake.rate = 0.79
+    assert cli.main(["eval", "run", "--gate"]) == 1
+    monkeypatch.setattr(
+        "ops_assist.evaluation.load_threshold",
+        lambda: {"dataset_version": "9.0.0", "value": 0, "justification": "test"},
+    )
+    assert cli.main(["eval", "run", "--gate"]) == 1
+
+
+def test_compare_tiers_gate_requires_both(monkeypatch, tmp_path, capsys):
+    def result(rate):
+        return {
+            "dataset_version": "1.1.0",
+            "pass_rate": rate,
+            "incident_pass_rates": {"x": rate},
+            "total_tokens": 0,
+            "approximate_calls": 0,
+            "unknown_calls": 0,
+            "duration_seconds": 0,
+            "results": [],
+        }, tmp_path / "result"
+
+    monkeypatch.setattr(
+        "ops_assist.evaluation.evaluate_tiers", lambda *a: {"main": result(1), "fast": result(0.5)}
+    )
+    assert cli.main(["eval", "run", "--compare-tiers", "--gate"]) == 1
+    assert "x: 50.0%" in capsys.readouterr().out
+    assert cli.main(["eval", "run", "--compare-tiers"]) == 0

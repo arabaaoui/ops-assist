@@ -1,0 +1,6 @@
+dataset_version: 1.1.0
+value: 0.8
+justification: >-
+  An initial workshop release target of 80% allows one failure among six cases;
+  this small fictional dataset does not establish production readiness. Reassess
+  against observed repeated runs and risk before using it for a real release.

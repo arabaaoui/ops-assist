@@ -90,6 +90,7 @@ def test_evaluate_and_cli_comparison(monkeypatch, tmp_path, capsys):
         assert settings.fast_models == ["fast"] and repeat == 2
         result = {
             "pass_rate": 0.5,
+            "incident_pass_rates": {"fictional": 0.5},
             "total_tokens": 23,
             "approximate_calls": 1,
             "unknown_calls": 2,
