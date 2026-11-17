@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 14.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 15.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
@@ -56,6 +56,8 @@ OPS_ASSIST_PROFILE=gateway uv run ops-assist profile
 uv run ops-assist a2a-serve --port 8000
 uv run ops-assist mcp-serve  # MCP over stdio; skills are available in both tool modes
 uv run ops-assist tokens
+uv run ops-assist knowledge index
+uv run ops-assist knowledge search "payment latency" -k 5
 uv run ops-assist validate examples/reports/valid.json
 uv run ops-assist ask "What is latency?"
 uv run ops-assist investigate "Why is payment slow?"
@@ -63,7 +65,7 @@ uv run ops-assist investigate "Why is payment slow?"
 
 `profile`, `a2a-serve`, `mcp-serve`, `tokens` and `validate` start without a model; an A2A investigation still requires one. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md), [13 — security](ateliers/13-securite/README.md), [14 — gateway](ateliers/14-passerelle/README.md), [15 — embeddings](ateliers/15-embeddings/README.md).
 
 ## Layout
 
@@ -78,7 +80,8 @@ src/ops_assist/
   mcp_server.py, a2a_server.py  protocol servers
   observability/      replay, Prometheus and Loki sources
   skills/             bundled investigation methods
-  data/               profiles and fictional incidents
+  knowledge/          embeddings and flat vector index
+  data/               profiles, fictional incidents and knowledge corpus
 apps/investigator/    ADK web investigator
 apps/oncall_assistant/  A2A client
 deploy/litellm/       gateway configuration
@@ -118,3 +121,7 @@ ADK callbacks classify tools and enforce read-only by default. Writes require a 
 ## Step 14 — gateway
 
 The `gateway` profile points to the OpenAI-compatible proxy configured in `deploy/litellm/config.yaml`. ADK fallback logs both models; `ask` prints the reported model to stderr and `investigate` prints received model versions, or `unknown`. A proxy may return only an alias: consult its logs to identify the actual provider. [Workshop 14](ateliers/14-passerelle/README.md) covers per-key limits and an offline path.
+
+## Step 15 — embeddings
+
+`knowledge index` builds a local index of fictional document sections; `knowledge search` ranks them by cosine similarity. Deterministic hashing is the offline default. `OPS_ASSIST_EMBEDDINGS` selects a LiteLLM model, `OPS_ASSIST_EMBEDDINGS_API_BASE` its endpoint, and `OPS_ASSIST_INDEX_FILE` a plain file name inside `OPS_ASSIST_STATE_DIR` (default `~/.local/state/ops-assist`). Rebuild the index after changing model or corpus. Similarity does not guarantee relevance; inspect the documents. See [workshop 15](ateliers/15-embeddings/README.md).

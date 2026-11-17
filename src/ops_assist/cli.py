@@ -43,6 +43,12 @@ def main(argv: list[str] | None = None) -> int:
     memory_list.add_argument("--service")
     memory_forget = memory_commands.add_parser("forget")
     memory_forget.add_argument("--service", required=True)
+    knowledge = commands.add_parser("knowledge")
+    knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
+    knowledge_commands.add_parser("index")
+    knowledge_search = knowledge_commands.add_parser("search")
+    knowledge_search.add_argument("query")
+    knowledge_search.add_argument("-k", type=int, default=5)
     agent = commands.add_parser("investigate")
     agent.add_argument("question")
     agent.add_argument("--incident")
@@ -71,6 +77,21 @@ def main(argv: list[str] | None = None) -> int:
             for name, profile in _load_profiles(path).items():
                 required = ", ".join(profile["requires_env"]) or "none"
                 print(f"{name}: {profile['description']} (requires: {required})")
+            return 0
+        if args.command == "knowledge":
+            from .knowledge.embeddings import configured_embedder
+            from .knowledge.index import VectorIndex
+            from .security import StateStore
+
+            embedder = configured_embedder()
+            store = StateStore()
+            if args.knowledge_command == "index":
+                index = VectorIndex.build(embedder)
+                index.save(store)
+                print(f"Indexed {len(index.chunks)} chunks in {store.root / store.index_name()}")
+            else:
+                for result in VectorIndex.load(store, embedder).search(args.query, args.k):
+                    print(f"{result['score']:.4f}  {result['id']}  {result['title']}")
             return 0
         settings = load_settings()
         if args.command in ("ask", "investigate") and not settings.models_overridden:

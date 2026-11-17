@@ -158,6 +158,58 @@ class StateStore:
             raise
         return fd
 
+    def index_name(self):
+        """Resolve an index name without allowing collisions with other state files."""
+        name = os.environ.get("OPS_ASSIST_INDEX_FILE") or "knowledge-index.json"
+        if name == self.audit_name or name.startswith(".incident-state-"):
+            raise ValueError("index file conflicts with another state file")
+        try:
+            return _plain_name(name)
+        except ValueError as exc:
+            raise ValueError("index file must be a plain name inside the state root") from exc
+
+    def open_index(self):
+        """Open an existing single-link index without following symbolic links."""
+        fd = os.open(
+            self.index_name(),
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=self.directory(),
+        )
+        try:
+            _checked_file(fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        return os.fdopen(fd, "r", encoding="utf-8")
+
+    def write_index(self, data):
+        """Replace a validated index atomically inside the anchored state directory."""
+        name = self.index_name()
+        directory = self.directory()
+        try:
+            with self.open_index():
+                pass
+        except FileNotFoundError:
+            pass
+        temporary = ".knowledge-index-" + secrets.token_hex(16)
+        fd = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=directory,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                json.dump(data, stream, ensure_ascii=False, indent=2)
+                stream.write("\n")
+            os.replace(temporary, name, src_dir_fd=directory, dst_dir_fd=directory)
+        finally:
+            try:
+                os.unlink(temporary, dir_fd=directory)
+            except FileNotFoundError:
+                pass
+        return self.root / name
+
     def update_state(self, source, service, deployment_id, version):
         """Replace the simulated state atomically within the same anchored directory."""
         directory = self.directory()
