@@ -83,7 +83,7 @@ def make_knowledge_tool():
                 raise ObservationError("k must be a positive integer")
             from .knowledge.embeddings import configured_embedder
             from .knowledge.index import VectorIndex
-            from .knowledge.retrieval import configured_reranker
+            from .knowledge.retrieval import configured_reranker, tokens
             from .knowledge.retrieval import search as retrieve
             from .security import StateStore
 
@@ -98,9 +98,20 @@ def make_knowledge_tool():
             if not isinstance(expand, bool):
                 raise ObservationError("expand must be a boolean")
             rows = await _call("search_knowledge", search)
+            terms = set(tokens(query))
+            overlap = (
+                max(
+                    (len(terms & set(tokens(str(row["text"])[:800]))) / len(terms) for row in rows),
+                    default=0.0,
+                )
+                if terms
+                else 0.0
+            )
+            quality = "none" if not rows else "good" if overlap >= 0.5 else "weak"
             result = {
                 "status": "ok",
                 "retrieval": "found" if rows else "none",
+                "retrieval_quality": quality,
                 "chunks": [
                     {
                         "source": str(r["id"])[:300],
@@ -112,6 +123,8 @@ def make_knowledge_tool():
                     for r in rows
                 ],
             }
+            if quality == "weak":
+                result["suggestion"] = "Reformulate with the service name or symptom."
             if expand:
                 import re
 

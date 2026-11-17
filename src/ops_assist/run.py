@@ -18,12 +18,15 @@ from litellm.rust_bridge.tokenizer import anthropic
 
 from .agent import build_agent
 from .config import Settings, load_settings
-from .memory import remember
+from .memory import SECRET, remember
 from .observability import ObservationSource, source_from_env
 from .report import CHUNK_ID, IncidentReport, check_observation_support, knowledge_citations
+from .security import _redact
 from .triage import pretriage
 
 logger = logging.getLogger(__name__)
+MAX_TRACE_CALLS = 50
+MAX_TRACE_VALUE = 200
 
 
 @dataclass
@@ -32,6 +35,7 @@ class ToolCallTrace:
 
     name: str
     args: dict[str, Any]
+    retrieval_quality: str | None = None
 
 
 class InvestigationTrace(list[ToolCallTrace]):
@@ -45,6 +49,59 @@ class InvestigationTrace(list[ToolCallTrace]):
         self.session_id = ""
         self.warnings: list[str] = []
         self.models: list[str] = []
+        self.omitted_calls = 0
+        self._pending: dict[str, ToolCallTrace] = {}
+
+    def record_call(self, call) -> None:
+        """Retain a bounded, redacted view of a call, keyed by its ADK ID."""
+        if len(self) >= MAX_TRACE_CALLS:
+            self.omitted_calls += 1
+            return
+        clean = _redact(dict(call.args or {}))
+        args = {}
+        for key, value in list(clean.items())[:50]:
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, ensure_ascii=False, default=str)
+            if isinstance(value, str):
+                value = value[:MAX_TRACE_VALUE]
+            if not isinstance(value, (str, int, float, bool, type(None))):
+                value = str(value)
+            if not isinstance(value, str) and len(str(value)) > MAX_TRACE_VALUE:
+                value = str(value)[:MAX_TRACE_VALUE]
+            args[SECRET.sub("[redacted]", key)[:MAX_TRACE_VALUE]] = value
+        item = ToolCallTrace(
+            str(call.name or "")[:MAX_TRACE_VALUE],
+            args,
+            "outcome unknown" if call.name == "search_knowledge" else None,
+        )
+        self.append(item)
+        if call.id:
+            self._pending[call.id] = item
+
+    def record_response(self, response) -> None:
+        """Associate a response only when ADK provides a matching call ID."""
+        item = self._pending.pop(response.id, None) if response.id else None
+        if item and item.name == "search_knowledge":
+            result = response.response or {}
+            quality = result.get("retrieval_quality")
+            reason = result.get("reason")
+            status = result.get("status")
+            item.retrieval_quality = (
+                quality
+                if quality in ("good", "weak", "none")
+                else reason
+                if reason
+                in (
+                    "knowledge_search_limit",
+                    "tool_call_limit",
+                    "delegation_limit",
+                    "read_only",
+                    "audit_unavailable",
+                )
+                else status
+                if status in ("error", "denied")
+                else "outcome unknown"
+            )
 
 
 def investigate(
@@ -137,7 +194,9 @@ def investigate(
                         if call.name == "adk_request_confirmation":
                             confirmations.append(call)
                         else:
-                            trace.append(ToolCallTrace(call.name, dict(call.args or {})))
+                            trace.record_call(call)
+                    if part.function_response:
+                        trace.record_response(part.function_response)
             if not confirmations:
                 break
             if confirm_tool is None:

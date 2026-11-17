@@ -252,6 +252,7 @@ class SecurityBoundary:
         """Load explicit local policy and budgets."""
         self.max_calls = _positive("OPS_ASSIST_MAX_TOOL_CALLS", 100)
         self.max_delegations = _positive("OPS_ASSIST_MAX_DELEGATIONS", 10)
+        self.max_searches = _positive("OPS_ASSIST_MAX_SEARCHES", 3)
         self.allow_writes = (
             os.environ.get("OPS_ASSIST_ALLOW_WRITES") == "1"
             if allow_writes is None
@@ -287,15 +288,19 @@ class SecurityBoundary:
         # Fail before a tool runs if its audit log cannot be opened.
         fd = self._open_audit()
         os.close(fd)
-        run = self.runs.setdefault(tool_context.invocation_id, [0, 0])
+        run = self.runs.setdefault(tool_context.invocation_id, [0, 0, 0])
         run[0] += 1
         if tool.name in DELEGATIONS:
             run[1] += 1
+        if tool.name == "search_knowledge":
+            run[2] += 1
         reason = None
         if run[0] > self.max_calls:
             reason = "tool_call_limit"
         elif run[1] > self.max_delegations:
             reason = "delegation_limit"
+        elif tool.name == "search_knowledge" and run[2] > self.max_searches:
+            reason = "knowledge_search_limit"
         elif TOOL_ACCESS.get(tool.name, "write") == "write":
             if tool.name != "rollback_deployment" or not self.allow_writes:
                 reason = "read_only"

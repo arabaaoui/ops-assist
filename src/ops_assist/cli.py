@@ -211,7 +211,14 @@ def main(argv: list[str] | None = None) -> int:
             report, trace = investigate(args.question, settings=settings, **kwargs)
             print(report.model_dump_json(indent=2))
             for call in trace:
-                print(f"Tool: {call.name} {json.dumps(call.args, ensure_ascii=False)}")
+                suffix = (
+                    f" quality={call.retrieval_quality}"
+                    if call.retrieval_quality is not None
+                    else ""
+                )
+                print(f"Tool: {call.name} {json.dumps(call.args, ensure_ascii=False)}{suffix}")
+            if trace.omitted_calls:
+                print(f"... {trace.omitted_calls} more tool calls")
             print(f"Models: {', '.join(trace.models) or 'unknown'}")
             print(f"Session: {trace.session_id}")
             for warning in trace.warnings:

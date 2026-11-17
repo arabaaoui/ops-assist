@@ -229,7 +229,12 @@ def test_empty_corpus_replaces_old_index_without_embedding(monkeypatch, capsys):
     assert cli.main(["knowledge", "search", "query"]) == 0
     assert capsys.readouterr().out.strip() == "retrieval: none"
     result = asyncio.run(make_knowledge_tool()("query"))
-    assert result == {"status": "ok", "retrieval": "none", "chunks": []}
+    assert result == {
+        "status": "ok",
+        "retrieval": "none",
+        "retrieval_quality": "none",
+        "chunks": [],
+    }
     assert knowledge.VectorIndex.build(embedder, index).chunks == [] and not embedder.calls
 
 
