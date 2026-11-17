@@ -5,7 +5,7 @@ Ask it *"why has the payment API been slow since 09:00?"*: it gathers evidence, 
 typed report that separates **facts** (with their source) from **hypotheses** (with a confidence
 and the facts they rest on) and from what it **does not know**.
 
-**Status: step 10.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
+**Status: step 11.** The agent investigates alerts, metrics, logs and changes through read-only tools and returns a valid `IncidentReport`.
 
 It is the hands-on project of a French video course on AI agent engineering: every chapter adds one
 capability. Version française : [README.fr.md](README.fr.md).
@@ -52,6 +52,7 @@ Recorded incidents can live outside the package with `OPS_ASSIST_INCIDENTS_DIR`.
 
 ```bash
 uv run ops-assist profile
+uv run ops-assist a2a-serve --port 8000
 uv run ops-assist mcp-serve  # MCP over stdio; skills are available in both tool modes
 uv run ops-assist tokens
 uv run ops-assist validate examples/reports/valid.json
@@ -61,7 +62,7 @@ uv run ops-assist investigate "Why is payment slow?"
 
 The first three commands work without a model. `ask` calls only the first configured model; `investigate` uses the configured agent model chain. Both need a running local model or a hosted provider. Token counts use a bundled tokenizer and are approximate.
 
-French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md).
+French workshops: [01 — first call](ateliers/01-premier-appel/README.md), [02 — structured output](ateliers/02-sortie-structuree/README.md), [03 — first agent](ateliers/03-premier-agent/README.md), [04 — subsystems](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — memory](ateliers/06-memoire/README.md), [07 — context budget](ateliers/07-budget-contexte/README.md), [08 — tool calls](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md).
 
 ## Layout
 
@@ -96,3 +97,7 @@ Module 1 now includes workshops 04–07: five subsystems, architecture decisions
 ## Step 10 — skills
 
 The agent loads the bundled `latency` and `errors-5xx` skills at startup in both tool modes. ADK exposes their names and descriptions through `list_skills` and their instructions through `load_skill`; the model chooses whether to use them. No new CLI command or model provider is needed to inspect them. The [offline workshop](ateliers/10-skills/README.md) compares skills and MCP.
+
+## Step 11 — A2A
+
+`ops-assist a2a-serve --port 8000` serves an A2A investigator on loopback. `apps/oncall_assistant` delegates questions using ADK’s remote agent; set `OPS_ASSIST_A2A_CARD_URL` to change the card URL. The [workshop](ateliers/11-a2a/README.md) includes an in-memory offline round trip. Tasks and sessions use in-memory stores. Set `OPS_ASSIST_A2A_TOKEN` on both sides to require bearer authentication; the card remains public. `OPS_ASSIST_A2A_TIMEOUT` sets the delegation deadline in seconds (default 120). Remote access requires a TLS reverse proxy that also rewrites the loopback address advertised in the card.

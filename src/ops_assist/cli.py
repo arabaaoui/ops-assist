@@ -24,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ops-assist")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("mcp-serve", help="serve read-only observation tools over stdio")
+    a2a = commands.add_parser("a2a-serve", help="serve the investigator over A2A on loopback")
+    a2a.add_argument("--port", type=int, default=8000)
     profile = commands.add_parser("profile")
     profile.add_argument("--list", action="store_true")
     tokens = commands.add_parser("tokens")
@@ -48,6 +50,13 @@ def main(argv: list[str] | None = None) -> int:
     agent.add_argument("--session")
     args = parser.parse_args(argv)
     try:
+        if args.command == "a2a-serve":
+            if not 1 <= args.port <= 65535:
+                raise ValueError("port must be between 1 and 65535")
+            from .a2a_server import serve
+
+            serve(args.port)
+            return 0
         if args.command == "mcp-serve":
             from .mcp_server import serve
 
