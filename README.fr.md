@@ -5,7 +5,7 @@ Demandez-lui *« pourquoi l'API de paiement est-elle lente depuis 9 h ? »* : il
 puis répond par un rapport typé qui sépare les **faits** (avec leur source), les **hypothèses** (avec
 un degré de confiance et les faits sur lesquels elles reposent) et ce qu'il **ne sait pas**.
 
-**État : étape 11.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
+**État : étape 12.** L'agent enquête sur les alertes, métriques, journaux et changements avec des outils en lecture seule, puis produit un `IncidentReport` valide.
 
 C'est le projet fil rouge d'un cours vidéo en français sur l'ingénierie des agents d'IA : chaque
 chapitre lui ajoute une capacité. English version: [README.md](README.md).
@@ -63,7 +63,7 @@ uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"
 
 Les trois premières commandes fonctionnent sans modèle. `ask` utilise le premier modèle configuré ; `investigate` utilise la chaîne de modèles de l'agent. Les deux nécessitent un modèle local actif ou un fournisseur distant. Le comptage utilise un tokenizer fourni et reste approximatif.
 
-Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md).
+Ateliers en français : [01 — premier appel](ateliers/01-premier-appel/README.md), [02 — sortie structurée](ateliers/02-sortie-structuree/README.md), [03 — premier agent](ateliers/03-premier-agent/README.md), [04 — sous-systèmes](ateliers/04-sous-systemes/README.md), [05 — architecture](ateliers/05-decision-architecture/README.md), [06 — mémoire](ateliers/06-memoire/README.md), [07 — budget de contexte](ateliers/07-budget-contexte/README.md), [08 — appel d’outils](ateliers/08-appel-d-outils/README.md), [09 — MCP](ateliers/09-mcp/README.md), [10 — skills](ateliers/10-skills/README.md), [11 — A2A](ateliers/11-a2a/README.md), [12 — rôles et frontières](ateliers/12-roles/README.md).
 
 ## Licence
 
@@ -86,3 +86,7 @@ L’agent charge les skills intégrés `latency` et `errors-5xx` au démarrage d
 ## Étape 11 — A2A
 
 `ops-assist a2a-serve --port 8000` expose l’enquêteur A2A sur l’interface locale. `apps/oncall_assistant` délègue les questions via l’agent distant ADK ; `OPS_ASSIST_A2A_CARD_URL` permet de changer l’adresse de la carte. L’[atelier](ateliers/11-a2a/README.md) propose un échange hors ligne en mémoire. Les tâches et sessions sont en mémoire. Définissez `OPS_ASSIST_A2A_TOKEN` des deux côtés pour exiger une authentification bearer ; la carte reste publique. `OPS_ASSIST_A2A_TIMEOUT` fixe le délai de délégation en secondes (120 par défaut). Un accès distant nécessite un reverse proxy TLS qui adapte aussi l’adresse locale annoncée dans la carte.
+
+## Étape 12 — rôles et frontières
+
+`OPS_ASSIST_TOPOLOGY=experts uv run ops-assist investigate "Pourquoi le paiement est-il lent ?"` délègue alertes et métriques à `metrics_expert`, journaux et changements à `logs_expert` ; le coordinateur rappelle la mémoire et produit le rapport final. Le défaut `single` préserve les scénarios scriptés existants. Les deux topologies prennent en charge les outils en processus ou MCP et le profil et sa chaîne de repli. Pour tester hors ligne : `OPS_ASSIST_TEST_ASYNC_TICK=1 uv run pytest -q tests/test_roles.py`.

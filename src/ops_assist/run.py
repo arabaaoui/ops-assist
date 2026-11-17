@@ -88,6 +88,8 @@ def investigate(
         agent.before_model_callback = measure
     if model is not None:
         agent.model = model
+        for expert in agent.sub_agents:
+            expert.model = model
     if settings.session_db:
         runner = Runner(
             agent=agent,
@@ -140,8 +142,15 @@ def investigate(
         try:
             if os.environ.get("OPS_ASSIST_TOOLS", "inprocess") == "mcp":
                 try:
-                    toolset = next(tool for tool in agent.tools if isinstance(tool, McpToolset))
-                    await toolset.get_tools()
+                    toolsets = [tool for tool in agent.tools if isinstance(tool, McpToolset)]
+                    toolsets += [
+                        nested
+                        for expert in agent.sub_agents
+                        for nested in expert.tools
+                        if isinstance(nested, McpToolset)
+                    ]
+                    for toolset in toolsets:
+                        await toolset.get_tools()
                 except Exception as exc:
                     raise ValueError(
                         "Could not start ops-assist MCP server; try OPS_ASSIST_TOOLS=inprocess"
