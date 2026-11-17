@@ -159,3 +159,7 @@ Tracing is opt-in with `OPS_ASSIST_OTEL=1`. An isolated OpenTelemetry SDK provid
 ## CI/CD gates and image
 
 The workflow runs lint, the complete test suite including the forbidden-terms secret scan, source contract tests, offline report evaluation and fast red-team probes before building an image. The report gate scores only the supplied fixtures and does not measure a live model. On tags, the image is pushed to GHCR and cosign signs its immutable digest using GitHub OIDC; other events build without publishing. The image uses pinned base and uv images, frozen dependencies and a non-root runtime user. Repository branch protection must independently require the gate jobs. See [workshop 36](../ateliers/36-ci-cd/README.md).
+
+## Failure review
+
+The [failure review](failure-review.md) maps the need, available data, validation, costs and ownership to repository evidence. It records the missing owner and the gap between scripted cost scenarios and measured per-investigation monetary cost. [Workshop 37](../ateliers/37-echecs/README.md) applies the same grid offline without adding a CLI command or configuration.
